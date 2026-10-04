@@ -120,6 +120,9 @@ export default {
       if (url.pathname === "/api/health" && request.method === "GET") {
         return json(request, { ok: true, service: "AJChat API" });
       }
+      if (url.pathname === "/api/version" && request.method === "GET") {
+        return json(request, { ok: true, version: "messages-v2", build: "2026-10-04" });
+      }
 
       if (url.pathname === "/api/auth/register" && request.method === "POST") {
         const body = await bodyJson(request);

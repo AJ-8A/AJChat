@@ -47,8 +47,11 @@ async function makeFriends(event){
     document.getElementById("forceFriendForm").reset();
     await loadDashboard();
   }catch(error){
-    status.textContent=error.message;
+    status.textContent=error.message||"Could not make friends.";
     status.className="dashboard-status error";
+  }finally{
+    const button=document.querySelector("#forceFriendForm button");
+    if(button)button.disabled=false;
   }
 }
 

@@ -55,6 +55,19 @@
         </div>
       </section>
 
+      <section class="panel admin-friend-panel">
+        <div class="panel-head">
+          <div><h2>Make friends</h2><span>Admin-only: instantly connect any two existing users.</span></div>
+        </div>
+        <form id="forceFriendForm" class="force-friend-form">
+          <label>User A<input id="friendUserA" type="text" maxlength="24" placeholder="username" required></label>
+          <div class="force-friend-link">↔</div>
+          <label>User B<input id="friendUserB" type="text" maxlength="24" placeholder="username" required></label>
+          <button type="submit">Make them friends</button>
+        </form>
+        <div class="dashboard-status" id="forceFriendStatus"></div>
+      </section>
+
       <section class="panel">
         <div class="panel-head">
           <div><h2>Friend requests</h2><span>Latest activity</span></div>

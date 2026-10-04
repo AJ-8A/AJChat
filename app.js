@@ -218,9 +218,9 @@ function renderFriendList(){
     const last=friend.last_message?" · "+escapeHTML(friend.last_message):"";
     const time=friend.last_message_time?formatTime(friend.last_message_time):"";
     const badge=unread?"<span class="unread-count">"+(unread>99?"99+":unread)+"</span>":"";
-    button.innerHTML="<div class="avatar">"+avatar+"</div>"+
-      "<div class="chat-meta"><div class="chat-meta-top"><strong>"+name+"</strong><time>"+time+"</time></div>"+
-      "<p><span class="friend-presence "+presenceClass+"><i></i>"+presenceText+"</span>"+last+"</p></div>"+badge;
+    button.innerHTML="<div class=\"avatar\">"+avatar+"</div>"+
+      "<div class=\"chat-meta\"><div class=\"chat-meta-top\"><strong>"+name+"</strong><time>"+time+"</time></div>"+
+      "<p><span class=\"friend-presence "+presenceClass+"><i></i>"+presenceText+"</span>"+last+"</p></div>"+badge;
     button.addEventListener("click",()=>selectFriend(friend.username));
     showChatItem(button);
   });
@@ -233,9 +233,9 @@ function renderFriendList(){
     const name=escapeHTML(group.name);
     const last=group.last_message?" · "+escapeHTML(group.last_message):"";
     const time=group.last_message_time?formatTime(group.last_message_time):"";
-    button.innerHTML="<div class="avatar group-avatar">"+avatar+"</div>"+
+    button.innerHTML="<div class=\"avatar group-avatar\">"+avatar+"</div>"+
       "<div class="chat-meta"><div class="chat-meta-top"><strong>"+name+"</strong><time>"+time+"</time></div>"+
-      "<p><span class="group-presence"><i></i>"+Number(group.member_count||0)+" members</span>"+last+"</p></div>";
+      "<p><span class=\"group-presence\"><i></i>"+Number(group.member_count||0)+" members</span>"+last+"</p></div>";
     button.addEventListener("click",()=>selectGroup(group.id));
     showChatItem(button);
   });

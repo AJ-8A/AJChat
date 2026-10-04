@@ -270,12 +270,21 @@ function connectSocket(retry=0){
     try{
       const data=JSON.parse(event.data);
       if(data.type==="message" && data.message){
-        if(!state.messages.some(m=>m.id===data.message.id)){
+        if(!state.messages.some(m=>String(m.id)===String(data.message.id))){
           state.messages.push(data.message);
           renderMessages();
         }
       }
-      if(data.type==="presence") el("chatStatus").textContent=data.online?"online now":"offline";
+      if(data.type==="ready"){
+        el("chatStatus").textContent=data.online
+          ?"Online now"
+          :"Offline — messages will be saved";
+      }
+      if(data.type==="presence"){
+        el("chatStatus").textContent=data.online
+          ?"Online now"
+          :"Offline — messages will be saved";
+      }
     }catch{}
   };
   socket.onclose=(event)=>{
@@ -283,7 +292,7 @@ function connectSocket(retry=0){
     state.socket=null;
     if(document.visibilityState==="hidden") return;
     startPolling();
-    el("chatStatus").textContent="offline — messages will sync";
+    el("chatStatus").textContent="Offline — messages will be saved";
     const delay=Math.min(1600*Math.max(1,retry+1),8000);
     setTimeout(()=>{
       if(state.activeFriend===expectedFriend && state.token) connectSocket(retry+1);
@@ -292,7 +301,7 @@ function connectSocket(retry=0){
   socket.onerror=()=>{
     if(state.socket===socket && state.activeFriend===expectedFriend){
       startPolling();
-      el("chatStatus").textContent="offline — messages will sync";
+      el("chatStatus").textContent="Offline — messages will be saved";
     }
   };
 }
@@ -327,7 +336,7 @@ async function sendMessage(){
       },900);
     }else{
       startPolling();
-      el("chatStatus").textContent="offline — saved & syncing";
+      el("chatStatus").textContent="Offline — saved & will deliver";
     }
   }catch(error){
     showToast(error.message);

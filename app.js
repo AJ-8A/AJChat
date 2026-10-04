@@ -247,7 +247,7 @@ function renderFriendList(){
     const name=escapeHTML(friend.username);
     const last=friend.last_message?" · "+escapeHTML(friend.last_message):"";
     const time=friend.last_message_time?formatTime(friend.last_message_time):"";
-    const badge=unread?"<span class="unread-count">"+(unread>99?"99+":unread)+"</span>":"";
+    const badge=unread?"<span class=\"unread-count\">"+(unread>99?"99+":unread)+"</span>":"";
     button.innerHTML="<div class=\"avatar\">"+avatar+"</div>"+
       "<div class=\"chat-meta\"><div class=\"chat-meta-top\"><strong>"+name+"</strong><time>"+time+"</time></div>"+
       "<p><span class=\"friend-presence "+presenceClass+"><i></i>"+presenceText+"</span>"+last+"</p></div>"+badge;

@@ -9,7 +9,7 @@
     {
       "binding": "AJCHAT_DB",
       "database_name": "ajchat-db",
-      "database_id": "REPLACE_WITH_YOUR_AJCHAT_D1_DATABASE_ID"
+      "database_id": "06388df6-bc2a-4265-b89d-34eddee1f870"
     }
   ],
   "durable_objects": {

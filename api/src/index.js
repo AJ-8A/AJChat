@@ -353,7 +353,7 @@ export default {
         });
       }
 
-      const requestActionMatch = url.pathname.match(/^\/api\/friend-requests\/(\\d+)\/(accept|reject)$/);
+      const requestActionMatch = url.pathname.match(/^\/api\/friend-requests\/(\d+)\/(accept|reject)$/);
       if (requestActionMatch && request.method === "POST") {
         const requestId = Number(requestActionMatch[1]);
         const action = requestActionMatch[2];

@@ -181,8 +181,12 @@ async function loadFriends(){
 }
 
 async function loadGroups(){
-  const data=await api("/api/groups");
-  state.groups=data.groups||[];
+  try{
+    const data=await api("/api/groups");
+    state.groups=data.groups||[];
+  }catch{
+    state.groups=[];
+  }
   renderFriendList();
   if(state.activeGroup && !state.groups.some(g=>Number(g.id)===Number(state.activeGroup))){
     state.activeGroup=null;

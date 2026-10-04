@@ -263,6 +263,38 @@ export default {
       }
 
       const messageMatch = url.pathname.match(/^\/api\/messages\/([^/]+)$/);
+      if (messageMatch && request.method === "POST") {
+        const username = decodeURIComponent(messageMatch[1]);
+        const friend = await env.AJCHAT_DB
+          .prepare("SELECT id, username FROM users WHERE username = ? COLLATE NOCASE")
+          .bind(username)
+          .first();
+
+        if (!friend || !(await isFriend(env.AJCHAT_DB, user.id, friend.id))) {
+          return json(request, { error: "Friend not found." }, 404);
+        }
+
+        const body = await bodyJson(request);
+        const messageBody = cleanMessage(body.text);
+        if (!messageBody) return json(request, { error: "Message cannot be empty." }, 400);
+
+        const room = roomFor(user.id, friend.id);
+        const inserted = await env.AJCHAT_DB
+          .prepare("INSERT INTO messages (room_id, sender_id, recipient_id, body) VALUES (?, ?, ?, ?)")
+          .bind(room, user.id, friend.id, messageBody)
+          .run();
+
+        const message = {
+          id: Number(inserted.meta?.last_row_id || 0),
+          body: messageBody,
+          created_at: Math.floor(Date.now() / 1000),
+          sender: user.username
+        };
+
+        return json(request, { message }, 201);
+      }
+
+      const messageMatch = url.pathname.match(/^\/api\/messages\/([^/]+)$/);
       if (messageMatch && request.method === "GET") {
         const username = decodeURIComponent(messageMatch[1]);
         const friend = await env.AJCHAT_DB

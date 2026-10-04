@@ -174,7 +174,7 @@ export default {
         }
 
         const users = await env.AJCHAT_DB
-          .prepare("SELECT id, username FROM users WHERE username IN (?, ?) COLLATE NOCASE")
+          .prepare("SELECT id, username FROM users WHERE lower(username) IN (?, ?)")
           .bind(usernameA, usernameB)
           .all();
 

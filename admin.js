@@ -38,9 +38,7 @@ async function makeFriends(event){
     });
     let data={};try{data=await response.json()}catch{}
     if(response.status===401){
-      sessionStorage.removeItem(tokenKey);
-      showLogin("Admin token rejected.");
-      return;
+      throw new Error("Admin token rejected for this action. Sign in again if your Worker admin token changed.");
     }
     if(!response.ok){
       if(response.status===404){

@@ -551,3 +551,120 @@ input{
     transition:none!important;
   }
 }
+
+
+/* FRIEND REQUESTS */
+.friend-requests{
+  margin:4px 8px 8px;
+  padding:10px;
+  border:1px solid rgba(71,209,164,.18);
+  border-radius:16px;
+  background:linear-gradient(145deg,rgba(71,209,164,.08),rgba(255,255,255,.025));
+}
+.requests-heading{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:2px 3px 8px;
+}
+.requests-heading strong{
+  display:block;
+  font-size:.68rem;
+  color:var(--text);
+}
+.requests-heading span{
+  display:block;
+  margin-top:2px;
+  color:var(--muted-2);
+  font-size:.55rem;
+}
+.request-list{
+  display:grid;
+  gap:7px;
+}
+.friend-request-card{
+  display:grid;
+  grid-template-columns:36px minmax(0,1fr) auto;
+  gap:8px;
+  align-items:center;
+  padding:8px;
+  border:1px solid var(--border);
+  border-radius:13px;
+  background:rgba(255,255,255,.035);
+}
+.request-avatar{
+  width:36px;
+  height:36px;
+  flex-basis:36px;
+  border-radius:11px;
+  font-size:.62rem;
+  background:linear-gradient(145deg,#ffe0ac,#dd9b45);
+}
+.request-copy{
+  min-width:0;
+}
+.request-copy strong{
+  display:block;
+  font-size:.68rem;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.request-copy span{
+  display:block;
+  margin-top:3px;
+  color:var(--muted);
+  font-size:.55rem;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.request-actions{
+  display:flex;
+  gap:4px;
+}
+.request-button{
+  width:30px;
+  height:30px;
+  display:grid;
+  place-items:center;
+  border:1px solid var(--border);
+  border-radius:9px;
+  cursor:pointer;
+  transition:.2s ease;
+  font-weight:800;
+}
+.request-button.accept{
+  background:rgba(71,209,164,.13);
+  color:var(--accent-2);
+  border-color:rgba(71,209,164,.25);
+}
+.request-button.reject{
+  background:rgba(255,110,130,.07);
+  color:#ff9eaa;
+}
+.request-button:hover{
+  transform:translateY(-1px);
+  border-color:var(--border-strong);
+}
+@media(max-width:760px){
+  .friend-requests{
+    margin-inline:8px;
+    padding:9px;
+  }
+  .friend-request-card{
+    min-height:58px;
+    grid-template-columns:40px minmax(0,1fr) auto;
+    padding:8px;
+  }
+  .request-avatar{
+    width:40px;
+    height:40px;
+    flex-basis:40px;
+  }
+  .request-button{
+    width:38px;
+    height:38px;
+    min-width:38px;
+  }
+}

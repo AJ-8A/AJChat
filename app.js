@@ -100,6 +100,7 @@ async function boot(){
     el("authUsername").focus();
   });
   if(!state.token){showAuth(true);return;}
+  setInterval(loadFriendRequests,5000);
   try{
     state.me=await api("/api/me");
     showAuth(false);

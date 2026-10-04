@@ -9,7 +9,7 @@ const dashboardStatus=document.getElementById("dashboardStatus");
 
 function setLoginStatus(text,error=false){loginStatus.textContent=text||"";loginStatus.className="status"+(error?" error":"")}
 function setDashboardStatus(text,error=false){dashboardStatus.textContent=text||"";dashboardStatus.className="dashboard-status"+(error?" error":"")}
-function headers(){return {Authorization:"Bearer "+(sessionStorage.getItem(tokenKey)||""),"Cache-Control":"no-store"}}
+function headers(){return {Authorization:"Bearer "+(sessionStorage.getItem(tokenKey)||"")}}
 async function loadDashboard(){
   const response=await fetch(API_BASE+"/api/admin/overview",{headers:headers(),cache:"no-store"});
   let data={};try{data=await response.json()}catch{}

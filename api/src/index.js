@@ -328,7 +328,6 @@ export default {
         return json(request, { message }, 201);
       }
 
-      const messageMatch = url.pathname.match(/^\/api\/messages\/([^/]+)$/);
       if (messageMatch && request.method === "GET") {
         const username = decodeURIComponent(messageMatch[1]);
         const friend = await env.AJCHAT_DB

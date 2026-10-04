@@ -668,3 +668,51 @@ input{
     min-width:38px;
   }
 }
+
+
+/* GLOBAL PRESENCE + UNREAD */
+.friend-presence{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  color:var(--muted-2);
+  font-size:.58rem;
+}
+.friend-presence i{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  display:inline-block;
+  flex:0 0 6px;
+  background:#6e8086;
+}
+.friend-presence.online{
+  color:var(--accent-2);
+}
+.friend-presence.online i{
+  background:var(--accent);
+  box-shadow:0 0 0 3px rgba(71,209,164,.08),0 0 9px rgba(71,209,164,.45);
+}
+.friend-presence.offline{
+  color:var(--muted-2);
+}
+.friend-presence.offline i{
+  background:#64757b;
+}
+.connection-dot.online{
+  background:var(--accent);
+  box-shadow:0 0 0 5px rgba(71,209,164,.08),0 0 16px rgba(71,209,164,.55);
+}
+.connection-dot.offline{
+  background:#68797e;
+  box-shadow:0 0 0 5px rgba(104,121,126,.08);
+  animation:none;
+}
+@media(max-width:760px){
+  .chat-item{
+    grid-template-columns:50px minmax(0,1fr) auto;
+  }
+  .unread-count{
+    align-self:center;
+  }
+}

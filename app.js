@@ -86,12 +86,10 @@ async function submitAuth(event){
     localStorage.setItem("ajchat_token",state.token);
     showAuth(false);
     startPresence();
-    await loadFriends();
-    await loadGroups();
-    await loadFriendRequests();
+    await Promise.all([loadFriends(), loadGroups(), loadFriendRequests()]);
     startFriendRefresh();
-    if(state.friends.length) selectFriend(state.friends[0].username);
-    else if(state.groups.length) selectGroup(state.groups[0].id);
+    if(state.friends.length) await selectFriend(state.friends[0].username);
+    else if(state.groups.length) await selectGroup(state.groups[0].id);
     else renderEmptyFriends();
     setAuthMessage("");
     showToast("You're in. Find a friend to start chatting.");
@@ -115,10 +113,13 @@ async function boot(){
     state.me=await api("/api/me");
     showAuth(false);
     startPresence();
-    await loadFriends();
-    await loadGroups();
-    await loadFriendRequests();
+    await Promise.all([loadFriends(), loadGroups(), loadFriendRequests()]);
     startFriendRefresh();
+    if(!state.activeFriend && !state.activeGroup){
+      if(state.friends.length) await selectFriend(state.friends[0].username);
+      else if(state.groups.length) await selectGroup(state.groups[0].id);
+      else renderEmptyFriends();
+    }
   }catch{
     localStorage.removeItem("ajchat_token");
     state.token="";
@@ -176,7 +177,6 @@ async function loadFriends(){
   if(state.activeFriend && !state.friends.some(f=>f.username===state.activeFriend)){
     state.activeFriend=null;
   }
-  if(!state.activeFriend && !state.activeGroup && state.friends.length) await selectFriend(state.friends[0].username);
   if(!state.friends.length && !state.groups.length) renderEmptyFriends();
 }
 

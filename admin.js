@@ -23,6 +23,35 @@ async function loadDashboard(){
   document.getElementById("requestsTable").innerHTML=(data.recent_requests||[]).map(item=>"<tr><td>"+esc(item.sender)+"</td><td>"+esc(item.receiver)+"</td><td>"+badge(item.status)+"</td><td>"+date(item.created_at)+"</td></tr>").join("")||"<tr><td colspan='4'>No friend requests yet.</td></tr>";
   setDashboardStatus("Updated "+new Date().toLocaleTimeString());
 }
+async function makeFriends(event){
+  event.preventDefault();
+  const status=document.getElementById("forceFriendStatus");
+  const userA=document.getElementById("friendUserA").value.trim();
+  const userB=document.getElementById("friendUserB").value.trim();
+  status.textContent="Connecting…";
+  status.className="dashboard-status";
+  try{
+    const response=await fetch(API_BASE+"/api/admin/friend",{
+      method:"POST",
+      headers:{...headers(),"Content-Type":"application/json"},
+      body:JSON.stringify({username_a:userA,username_b:userB})
+    });
+    let data={};try{data=await response.json()}catch{}
+    if(response.status===401){
+      sessionStorage.removeItem(tokenKey);
+      showLogin("Admin token rejected.");
+      return;
+    }
+    if(!response.ok)throw new Error(data.error||"Could not make friends.");
+    status.textContent=data.users[0]+" and "+data.users[1]+" are now friends.";
+    document.getElementById("forceFriendForm").reset();
+    await loadDashboard();
+  }catch(error){
+    status.textContent=error.message;
+    status.className="dashboard-status error";
+  }
+}
+
 function badge(status){const safe=esc(status||"unknown");return "<span class='badge "+safe+"'>"+safe+"</span>"}
 function date(seconds){if(!seconds)return"—";return new Date(Number(seconds)*1000).toLocaleString([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}
 function esc(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
@@ -34,6 +63,7 @@ loginForm.addEventListener("submit",async event=>{
   sessionStorage.setItem(tokenKey,token);setLoginStatus("Checking…");
   try{await loadDashboard();if(sessionStorage.getItem(tokenKey))showDashboard()}catch(error){sessionStorage.removeItem(tokenKey);setLoginStatus(error.message,true)}
 });
+document.getElementById("forceFriendForm").addEventListener("submit",makeFriends);
 document.getElementById("refreshButton").addEventListener("click",()=>loadDashboard().catch(e=>setDashboardStatus(e.message,true)));
 document.getElementById("logoutButton").addEventListener("click",()=>{sessionStorage.removeItem(tokenKey);tokenInput.value="";showLogin("Locked.")});
 if(sessionStorage.getItem(tokenKey))showDashboard();

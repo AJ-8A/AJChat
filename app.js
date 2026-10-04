@@ -183,17 +183,20 @@ function renderMessages(){
   messagesBox.scrollTop=messagesBox.scrollHeight;
 }
 
-function connectSocket(){
+function connectSocket(retry=0){
   if(!state.activeFriend||!state.token)return;
   if(state.socket){try{state.socket.close()}catch{}}
-  const room=state.friends.find(f=>f.username===state.activeFriend)?.room;
+  const expectedFriend=state.activeFriend;
+  const room=state.friends.find(f=>f.username===expectedFriend)?.room;
   if(!room){return}
   const socket=new WebSocket(WS_BASE+"/ws?room="+encodeURIComponent(room)+"&token="+encodeURIComponent(state.token));
   state.socket=socket;
   socket.onopen=()=>{
-    if(state.activeFriend) el("chatStatus").textContent="online connection";
+    if(state.socket!==socket || state.activeFriend!==expectedFriend) return;
+    el("chatStatus").textContent="connected";
   };
   socket.onmessage=(event)=>{
+    if(state.socket!==socket || state.activeFriend!==expectedFriend) return;
     try{
       const data=JSON.parse(event.data);
       if(data.type==="message" && data.message){
@@ -206,8 +209,14 @@ function connectSocket(){
     }catch{}
   };
   socket.onclose=()=>{
-    if(state.activeFriend) el("chatStatus").textContent="offline • reconnecting";
-    if(state.activeFriend) setTimeout(()=>connectSocket(),1600);
+    if(state.socket!==socket || state.activeFriend!==expectedFriend) return;
+    state.socket=null;
+    if(document.visibilityState==="hidden") return;
+    const delay=Math.min(1600*Math.max(1,retry+1),8000);
+    el("chatStatus").textContent="reconnecting…";
+    setTimeout(()=>{
+      if(state.activeFriend===expectedFriend && state.token) connectSocket(retry+1);
+    },delay);
   };
   socket.onerror=()=>{};
 }

@@ -11,7 +11,9 @@ const state = {
   pollTimer: null,
   messages: [],
   incomingRequests: [],
-  outgoingRequests: []
+  outgoingRequests: [],
+  presenceTimer: null,
+  friendRefreshTimer: null
 };
 
 const el = id => document.getElementById(id);
@@ -79,8 +81,10 @@ async function submitAuth(event){
     state.me=data.user;
     localStorage.setItem("ajchat_token",state.token);
     showAuth(false);
+    startPresence();
     await loadFriends();
     await loadFriendRequests();
+    startFriendRefresh();
     if(state.friends.length) selectFriend(state.friends[0].username);
     else renderEmptyFriends();
     setAuthMessage("");
@@ -104,8 +108,10 @@ async function boot(){
   try{
     state.me=await api("/api/me");
     showAuth(false);
+    startPresence();
     await loadFriends();
     await loadFriendRequests();
+    startFriendRefresh();
   }catch{
     localStorage.removeItem("ajchat_token");
     state.token="";
@@ -113,6 +119,45 @@ async function boot(){
   }
 }
 
+async function sendPresence(){
+  if(!state.token)return;
+  try{
+    await api("/api/presence",{method:"POST",body:"{}"});
+    const dot=el("selfStatusDot"), label=el("selfStatusText");
+    if(dot){dot.classList.remove("offline");dot.classList.add("online")}
+    if(label)label.textContent="Online";
+  }catch{
+    const dot=el("selfStatusDot"), label=el("selfStatusText");
+    if(dot){dot.classList.remove("online");dot.classList.add("offline")}
+    if(label)label.textContent="Offline";
+  }
+}
+
+function startPresence(){
+  if(state.presenceTimer || !state.token)return;
+  sendPresence();
+  state.presenceTimer=setInterval(sendPresence,15000);
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")sendPresence()},{passive:true});
+}
+
+async function refreshFriendStates(){
+  if(!state.token)return;
+  try{
+    const data=await api("/api/friends");
+    state.friends=data.friends||[];
+    renderFriendList();
+    if(state.activeFriend){
+      const active=state.friends.find(f=>f.username===state.activeFriend);
+      if(active)el("chatStatus").textContent=active.online?"Online now":"Offline — messages will be saved";
+    }
+  }catch{}
+}
+
+function startFriendRefresh(){
+  if(state.friendRefreshTimer || !state.token)return;
+  refreshFriendStates();
+  state.friendRefreshTimer=setInterval(refreshFriendStates,4000);
+}
 async function loadFriends(){
   const data=await api("/api/friends");
   state.friends=data.friends||[];
@@ -130,18 +175,21 @@ function renderFriendList(){
     const button=document.createElement("button");
     button.type="button";
     button.className="chat-item"+(friend.username===state.activeFriend?" active":"");
-    button.innerHTML=`
-      <div class="avatar">${escapeHTML(friend.initials||friend.username.slice(0,2).toUpperCase())}</div>
-      <div class="chat-meta">
-        <div class="chat-meta-top"><strong>${escapeHTML(friend.username)}</strong><time>${friend.last_message_time?formatTime(friend.last_message_time):""}</time></div>
-        <p>${escapeHTML(friend.last_message||"Start a conversation")}</p>
-      </div>
-    `;
+    const presenceClass=friend.online?"online":"offline";
+    const presenceText=friend.online?"Online":"Offline";
+    const unread=Number(friend.unread_count||0);
+    const avatar=escapeHTML(friend.initials||friend.username.slice(0,2).toUpperCase());
+    const name=escapeHTML(friend.username);
+    const last=friend.last_message?" · "+escapeHTML(friend.last_message):"";
+    const time=friend.last_message_time?formatTime(friend.last_message_time):"";
+    const badge=unread?"<span class=\"unread-count\">"+(unread>99?"99+":unread)+"</span>":"";
+    button.innerHTML="<div class=\"avatar\">"+avatar+"</div>"+
+      "<div class=\"chat-meta\"><div class=\"chat-meta-top\"><strong>"+name+"</strong><time>"+time+"</time></div>"+
+      "<p><span class=\"friend-presence "+presenceClass+"\"><i></i>"+presenceText+"</span>"+last+"</p></div>"+badge;
     button.addEventListener("click",()=>selectFriend(friend.username));
     chatList.appendChild(button);
   });
 }
-
 async function loadFriendRequests(){
   try{
     const data=await api("/api/friend-requests");
@@ -206,6 +254,10 @@ async function selectFriend(username){
     const data=await api("/api/messages/"+encodeURIComponent(username));
     state.messages=data.messages||[];
     renderMessages();
+    await api("/api/messages/"+encodeURIComponent(username)+"/read",{method:"POST",body:"{}"}).catch(()=>{});
+    const active=state.friends.find(f=>f.username===username);
+    if(active)active.unread_count=0;
+    renderFriendList();
     startPolling();
     connectSocket();
   }catch(error){

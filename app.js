@@ -208,17 +208,22 @@ function connectSocket(retry=0){
       if(data.type==="presence") el("chatStatus").textContent=data.online?"online now":"offline";
     }catch{}
   };
-  socket.onclose=()=>{
+  socket.onclose=(event)=>{
     if(state.socket!==socket || state.activeFriend!==expectedFriend) return;
     state.socket=null;
     if(document.visibilityState==="hidden") return;
+    const reason=event.reason?(" • "+event.reason):"";
+    el("chatStatus").textContent="connection closed ("+event.code+")"+reason;
     const delay=Math.min(1600*Math.max(1,retry+1),8000);
-    el("chatStatus").textContent="reconnecting…";
     setTimeout(()=>{
       if(state.activeFriend===expectedFriend && state.token) connectSocket(retry+1);
     },delay);
   };
-  socket.onerror=()=>{};
+  socket.onerror=()=>{
+    if(state.socket===socket && state.activeFriend===expectedFriend){
+      el("chatStatus").textContent="WebSocket error";
+    }
+  };
 }
 
 function sendMessage(){

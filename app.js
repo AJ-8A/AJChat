@@ -9,7 +9,9 @@ const state = {
   activeFriend: null,
   socket: null,
   pollTimer: null,
-  messages: []
+  messages: [],
+  incomingRequests: [],
+  outgoingRequests: []
 };
 
 const el = id => document.getElementById(id);
@@ -78,6 +80,7 @@ async function submitAuth(event){
     localStorage.setItem("ajchat_token",state.token);
     showAuth(false);
     await loadFriends();
+    await loadFriendRequests();
     if(state.friends.length) selectFriend(state.friends[0].username);
     else renderEmptyFriends();
     setAuthMessage("");
@@ -101,6 +104,7 @@ async function boot(){
     state.me=await api("/api/me");
     showAuth(false);
     await loadFriends();
+    await loadFriendRequests();
   }catch{
     localStorage.removeItem("ajchat_token");
     state.token="";
@@ -137,6 +141,45 @@ function renderFriendList(){
   });
 }
 
+async function loadFriendRequests(){
+  try{
+    const data=await api("/api/friend-requests");
+    state.incomingRequests=data.incoming||[];
+    state.outgoingRequests=data.outgoing||[];
+    renderFriendRequests();
+  }catch{}
+}
+
+function renderFriendRequests(){
+  const section=el("friendRequestsSection");
+  const list=el("requestList");
+  const count=el("requestCount");
+  if(!section||!list||!count)return;
+  const incoming=state.incomingRequests||[];
+  section.hidden=incoming.length===0;
+  count.textContent=incoming.length===1?"1 waiting":incoming.length+" waiting";
+  list.innerHTML="";
+  incoming.forEach(request=>{
+    const card=document.createElement("article");
+    card.className="friend-request-card";
+    card.innerHTML="<div class=\"avatar request-avatar\">"+escapeHTML(request.initials||request.username.slice(0,2).toUpperCase())+"</div>"+
+      "<div class=\"request-copy\"><strong>"+escapeHTML(request.username)+"</strong><span>wants to be your friend</span></div>"+
+      "<div class=\"request-actions\"><button type=\"button\" class=\"request-button accept\">✓</button><button type=\"button\" class=\"request-button reject\">×</button></div>";
+    const buttons=card.querySelectorAll("button");
+    buttons[0].addEventListener("click",()=>handleFriendRequest(request.id,"accept"));
+    buttons[1].addEventListener("click",()=>handleFriendRequest(request.id,"reject"));
+    list.appendChild(card);
+  });
+}
+
+async function handleFriendRequest(requestId,action){
+  try{
+    await api("/api/friend-requests/"+requestId+"/"+action,{method:"POST"});
+    await loadFriendRequests();
+    await loadFriends();
+    showToast(action==="accept"?"Friend request accepted.":"Friend request declined.");
+  }catch(error){showToast(error.message);}
+}
 function renderEmptyFriends(){
   chatList.innerHTML='<div class="empty-friends"><strong>No friends yet.</strong><span>Tap ＋ and enter a friend\'s username.</span></div>';
   el("chatName").textContent="Your friends";
@@ -298,10 +341,20 @@ async function addFriend(){
   const username=prompt("Enter your friend's AJChat username:");
   if(!username)return;
   try{
-    await api("/api/friends",{method:"POST",body:JSON.stringify({username:username.trim()})});
-    await loadFriends();
-    await selectFriend(username.trim().toLowerCase());
-    showToast("Friend added.");
+    const data=await api("/api/friends",{method:"POST",body:JSON.stringify({username:username.trim()})});
+    if(data.status==="friends"){
+      await loadFriends();
+      await selectFriend(username.trim().toLowerCase());
+      showToast("You are already friends.");
+      return;
+    }
+    if(data.status==="incoming"){
+      await loadFriendRequests();
+      showToast("They already sent you a request. Check Friend requests.");
+      return;
+    }
+    await loadFriendRequests();
+    showToast("Friend request sent.");
   }catch(error){
     showToast(error.message);
   }

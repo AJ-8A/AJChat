@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b141a">
+  <meta name="description" content="AJChat — an original glass-style realtime messaging interface.">
+  <title>AJChat — Messages</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
+  <main class="app-shell">
+    <section class="messenger" aria-label="AJChat messenger">
+      <aside class="sidebar" id="sidebar">
+        <header class="sidebar-top">
+          <div class="brand">
+            <div class="brand-mark">AJ</div>
+            <div>
+              <strong>AJChat</strong>
+              <span>Private • Fast • Global</span>
+            </div>
+          </div>
+
+          <div class="sidebar-actions">
+            <button class="icon-button" id="newChatButton" type="button" aria-label="Start new chat">＋</button>
+            <button class="icon-button" id="themeButton" type="button" aria-label="Toggle theme">◐</button>
+          </div>
+        </header>
+
+        <div class="search-wrap">
+          <label class="search-box" for="chatSearch">
+            <span>⌕</span>
+            <input id="chatSearch" type="search" placeholder="Search chats" autocomplete="off">
+            <kbd>/</kbd>
+          </label>
+        </div>
+
+        <div class="filter-pills" role="tablist" aria-label="Chat filters">
+          <button class="filter-pill active" data-filter="all" type="button">All</button>
+          <button class="filter-pill" data-filter="unread" type="button">Unread</button>
+          <button class="filter-pill" data-filter="groups" type="button">Groups</button>
+        </div>
+
+        <div class="chat-list" id="chatList"></div>
+
+        <footer class="sidebar-footer">
+          <div class="profile-mini">
+            <div class="avatar avatar-self">AJ</div>
+            <div class="profile-copy">
+              <strong>AJ</strong>
+              <span>Available</span>
+            </div>
+          </div>
+          <span class="connection-dot" title="Demo connection"></span>
+        </footer>
+      </aside>
+
+      <section class="chat-panel" id="chatPanel">
+        <header class="chat-header">
+          <button class="mobile-only icon-button" id="backButton" type="button" aria-label="Back to chats">‹</button>
+
+          <div class="chat-person">
+            <div class="avatar" id="chatAvatar">SA</div>
+            <div>
+              <strong id="chatName">Sarah Anderson</strong>
+              <span id="chatStatus">online now</span>
+            </div>
+          </div>
+
+          <div class="chat-actions">
+            <button class="icon-button" type="button" title="Search in chat">⌕</button>
+            <button class="icon-button" type="button" title="Start video call">◉</button>
+            <button class="icon-button" type="button" title="More">•••</button>
+          </div>
+        </header>
+
+        <div class="chat-scene">
+          <div class="date-chip">Today</div>
+          <div class="messages" id="messages" aria-live="polite"></div>
+          <div class="typing-row hidden" id="typingRow">
+            <div class="typing-avatar avatar">SA</div>
+            <div class="typing-bubble">
+              <i></i><i></i><i></i>
+            </div>
+          </div>
+        </div>
+
+        <form class="composer" id="composer">
+          <button class="icon-button" type="button" id="emojiButton" aria-label="Add emoji">☺</button>
+          <button class="icon-button" type="button" id="attachButton" aria-label="Attach">＋</button>
+          <input id="messageInput" type="text" maxlength="500" placeholder="Write a message…" autocomplete="off" aria-label="Message">
+          <button class="send-button" type="submit" aria-label="Send message">➤</button>
+        </form>
+      </section>
+
+      <aside class="details-panel" id="detailsPanel">
+        <div class="details-glow"></div>
+        <div class="details-avatar avatar avatar-large">SA</div>
+        <span class="presence-badge">● Online</span>
+        <h2>Sarah Anderson</h2>
+        <p>Design partner • StudyHub</p>
+
+        <div class="details-actions">
+          <button type="button"><span>⌁</span><small>Voice</small></button>
+          <button type="button"><span>◉</span><small>Video</small></button>
+          <button type="button"><span>⋯</span><small>More</small></button>
+        </div>
+
+        <div class="info-card">
+          <span>About</span>
+          <strong>Building useful things, one clean screen at a time.</strong>
+        </div>
+
+        <div class="media-grid">
+          <div class="media-title"><span>Shared media</span><small>12</small></div>
+          <div class="media-placeholder"></div>
+          <div class="media-placeholder alt"></div>
+          <div class="media-placeholder warm"></div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -288,12 +288,109 @@ export default {
 
         if (!friend) return json(request, { error: "No AJChat user found with that username." }, 404);
 
+        if (await isFriend(env.AJCHAT_DB, user.id, friend.id)) {
+          return json(request, { ok: true, status: "friends", friend: { username: friend.username, room: roomFor(user.id, friend.id) } });
+        }
+
+        const existing = await env.AJCHAT_DB
+          .prepare("SELECT id, sender_id, receiver_id, status FROM friend_requests WHERE sender_id = ? AND receiver_id = ?")
+          .bind(user.id, friend.id)
+          .first();
+
+        if (existing?.status === "pending") {
+          return json(request, { ok: true, status: "pending", request_id: existing.id });
+        }
+
+        const reverse = await env.AJCHAT_DB
+          .prepare("SELECT id, status FROM friend_requests WHERE sender_id = ? AND receiver_id = ?")
+          .bind(friend.id, user.id)
+          .first();
+
+        if (reverse?.status === "pending") {
+          return json(request, { ok: true, status: "incoming", request_id: reverse.id });
+        }
+
+        let requestId;
+        if (existing) {
+          await env.AJCHAT_DB
+            .prepare("UPDATE friend_requests SET status = 'pending', updated_at = unixepoch() WHERE id = ?")
+            .bind(existing.id)
+            .run();
+          requestId = existing.id;
+        } else {
+          const inserted = await env.AJCHAT_DB
+            .prepare("INSERT INTO friend_requests (sender_id, receiver_id, status) VALUES (?, ?, 'pending')")
+            .bind(user.id, friend.id)
+            .run();
+          requestId = Number(inserted.meta?.last_row_id || 0);
+        }
+
+        return json(request, { ok: true, status: "pending", request_id: requestId, to: friend.username }, 201);
+      }
+
+      if (url.pathname === "/api/friend-requests" && request.method === "GET") {
+        const incoming = await env.AJCHAT_DB.prepare(`
+          SELECT r.id, r.created_at, u.username, u.id AS user_id,
+                 substr(upper(u.username), 1, 2) AS initials
+          FROM friend_requests r
+          JOIN users u ON u.id = r.sender_id
+          WHERE r.receiver_id = ? AND r.status = 'pending'
+          ORDER BY r.created_at DESC
+        `).bind(user.id).all();
+
+        const outgoing = await env.AJCHAT_DB.prepare(`
+          SELECT r.id, r.created_at, u.username, u.id AS user_id,
+                 substr(upper(u.username), 1, 2) AS initials
+          FROM friend_requests r
+          JOIN users u ON u.id = r.receiver_id
+          WHERE r.sender_id = ? AND r.status = 'pending'
+          ORDER BY r.created_at DESC
+        `).bind(user.id).all();
+
+        return json(request, {
+          incoming: incoming.results || [],
+          outgoing: outgoing.results || []
+        });
+      }
+
+      const requestActionMatch = url.pathname.match(/^\/api\/friend-requests\/(\\d+)\/(accept|reject)$/);
+      if (requestActionMatch && request.method === "POST") {
+        const requestId = Number(requestActionMatch[1]);
+        const action = requestActionMatch[2];
+
+        const friendRequest = await env.AJCHAT_DB
+          .prepare("SELECT id, sender_id, receiver_id, status FROM friend_requests WHERE id = ? AND receiver_id = ? AND status = 'pending'")
+          .bind(requestId, user.id)
+          .first();
+
+        if (!friendRequest) {
+          return json(request, { error: "Friend request not found or already handled." }, 404);
+        }
+
+        if (action === "reject") {
+          await env.AJCHAT_DB
+            .prepare("UPDATE friend_requests SET status = 'rejected', updated_at = unixepoch() WHERE id = ?")
+            .bind(requestId)
+            .run();
+          return json(request, { ok: true, status: "rejected" });
+        }
+
         await env.AJCHAT_DB.batch([
-          env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO friendships (user_id, friend_id) VALUES (?, ?)").bind(user.id, friend.id),
-          env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO friendships (user_id, friend_id) VALUES (?, ?)").bind(friend.id, user.id)
+          env.AJCHAT_DB.prepare("UPDATE friend_requests SET status = 'accepted', updated_at = unixepoch() WHERE id = ?").bind(requestId),
+          env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO friendships (user_id, friend_id) VALUES (?, ?)").bind(user.id, friendRequest.sender_id),
+          env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO friendships (user_id, friend_id) VALUES (?, ?)").bind(friendRequest.sender_id, user.id)
         ]);
 
-        return json(request, { ok: true, friend: { username: friend.username, room: roomFor(user.id, friend.id) } }, 201);
+        const acceptedFriend = await env.AJCHAT_DB
+          .prepare("SELECT id, username FROM users WHERE id = ?")
+          .bind(friendRequest.sender_id)
+          .first();
+
+        return json(request, {
+          ok: true,
+          status: "accepted",
+          friend: acceptedFriend ? { username: acceptedFriend.username, room: roomFor(user.id, acceptedFriend.id) } : null
+        });
       }
 
       const messageMatch = url.pathname.match(/^\/api\/messages\/([^/]+)$/);

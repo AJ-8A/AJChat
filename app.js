@@ -167,7 +167,7 @@ async function refreshFriendStates(){
 function startFriendRefresh(){
   if(state.friendRefreshTimer || !state.token)return;
   refreshFriendStates();
-  state.friendRefreshTimer=setInterval(refreshFriendStates,4000);
+  state.friendRefreshTimer=setInterval(refreshFriendStates,10000);
 }
 async function loadFriends(){
   const data=await api("/api/friends");
@@ -388,7 +388,7 @@ function startGroupPolling(){
     }catch{}
   };
   poll();
-  state.groupPollTimer=setInterval(poll,1000);
+  state.groupPollTimer=setInterval(poll,2500);
 }
 
 function startPolling(){
@@ -410,7 +410,7 @@ function startPolling(){
     }catch{}
   };
   poll();
-  state.pollTimer=setInterval(poll,1000);
+  state.pollTimer=setInterval(poll,2500);
 }
 
 function connectSocket(retry=0){

@@ -42,7 +42,12 @@ async function makeFriends(event){
       showLogin("Admin token rejected.");
       return;
     }
-    if(!response.ok)throw new Error(data.error||"Could not make friends.");
+    if(!response.ok){
+      if(response.status===404){
+        throw new Error("Admin friendship API is not deployed yet. Run: cd ~/AJChat/api && npx wrangler deploy");
+      }
+      throw new Error(data.error||"Could not make friends.");
+    }
     status.textContent=data.users[0]+" and "+data.users[1]+" are now friends.";
     document.getElementById("forceFriendForm").reset();
     await loadDashboard();

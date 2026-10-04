@@ -92,6 +92,7 @@ async function submitAuth(event){
 
 async function boot(){
   renderAuthMode();
+  setInterval(loadFriendRequests,5000);
   el("authForm").addEventListener("submit",submitAuth);
   el("authSwitch").addEventListener("click",()=>{
     state.mode=state.mode==="login"?"register":"login";
@@ -100,7 +101,6 @@ async function boot(){
     el("authUsername").focus();
   });
   if(!state.token){showAuth(true);return;}
-  setInterval(loadFriendRequests,5000);
   try{
     state.me=await api("/api/me");
     showAuth(false);

@@ -188,6 +188,36 @@ export default {
         });
       }
 
+      if (url.pathname === "/ws" && request.method === "GET" && request.headers.get("Upgrade") === "websocket") {
+        const token = url.searchParams.get("token") || "";
+        const room = url.searchParams.get("room") || "";
+        if (!token || !room) return new Response("Missing credentials", { status: 400 });
+
+        const sessionRequest = new Request(request.url, {
+          headers: { Authorization: "Bearer " + token }
+        });
+        const wsUser = await authUser(sessionRequest, env);
+        if (!wsUser) return new Response("Unauthorized", { status: 401 });
+
+        const parts = room.split(":");
+        if (parts.length !== 3 || parts[0] !== "dm") return new Response("Invalid room", { status: 400 });
+        const a = Number(parts[1]);
+        const b = Number(parts[2]);
+        if (![a, b].includes(Number(wsUser.id))) return new Response("Forbidden", { status: 403 });
+
+        const otherId = Number(wsUser.id) === a ? b : a;
+        if (!(await isFriend(env.AJCHAT_DB, wsUser.id, otherId))) {
+          return new Response("Not friends", { status: 403 });
+        }
+
+        const objectId = env.CHAT_ROOMS.idFromName(room);
+        const stub = env.CHAT_ROOMS.get(objectId);
+        const headers = new Headers(request.headers);
+        headers.set("x-ajchat-user-id", String(wsUser.id));
+        headers.set("x-ajchat-username", wsUser.username);
+        return stub.fetch(new Request(request, { headers }));
+      }
+
       const user = await authUser(request, env);
 
       if (url.pathname === "/api/me" && request.method === "GET") {
@@ -320,36 +350,6 @@ export default {
           .all();
 
         return json(request, { messages: (rows.results || []).reverse() });
-      }
-
-      if (url.pathname === "/ws" && request.headers.get("Upgrade") === "websocket") {
-        const token = url.searchParams.get("token") || "";
-        const room = url.searchParams.get("room") || "";
-        if (!token || !room) return new Response("Missing credentials", { status: 400 });
-
-        const sessionRequest = new Request(request.url, {
-          headers: { Authorization: "Bearer " + token }
-        });
-        const wsUser = await authUser(sessionRequest, env);
-        if (!wsUser) return new Response("Unauthorized", { status: 401 });
-
-        const parts = room.split(":");
-        if (parts.length !== 3 || parts[0] !== "dm") return new Response("Invalid room", { status: 400 });
-        const a = Number(parts[1]);
-        const b = Number(parts[2]);
-        if (![a,b].includes(Number(wsUser.id))) return new Response("Forbidden", { status: 403 });
-
-        const otherId = Number(wsUser.id) === a ? b : a;
-        if (!(await isFriend(env.AJCHAT_DB, wsUser.id, otherId))) {
-          return new Response("Not friends", { status: 403 });
-        }
-
-        const objectId = env.CHAT_ROOMS.idFromName(room);
-        const stub = env.CHAT_ROOMS.get(objectId);
-        const headers = new Headers(request.headers);
-        headers.set("x-ajchat-user-id", String(wsUser.id));
-        headers.set("x-ajchat-username", wsUser.username);
-        return stub.fetch(new Request(request, { headers }));
       }
 
       if (url.pathname === "/api/logout" && request.method === "POST") {

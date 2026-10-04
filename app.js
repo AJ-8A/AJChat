@@ -17,7 +17,8 @@ const state = {
   incomingRequests: [],
   outgoingRequests: [],
   presenceTimer: null,
-  friendRefreshTimer: null
+  friendRefreshTimer: null,
+  friendRequestTimer: null
 };
 
 const el = id => document.getElementById(id);
@@ -86,8 +87,10 @@ async function submitAuth(event){
     localStorage.setItem("ajchat_token",state.token);
     showAuth(false);
     startPresence();
-    await Promise.all([loadFriends(), loadGroups(), loadFriendRequests()]);
+    await Promise.all([loadFriends(false), loadGroups(false), loadFriendRequests()]);
+    renderFriendList();
     startFriendRefresh();
+    startFriendRequestRefresh();
     if(state.friends.length) await selectFriend(state.friends[0].username);
     else if(state.groups.length) await selectGroup(state.groups[0].id);
     else renderEmptyFriends();
@@ -100,7 +103,6 @@ async function submitAuth(event){
 
 async function boot(){
   renderAuthMode();
-  setInterval(loadFriendRequests,5000);
   el("authForm").addEventListener("submit",submitAuth);
   el("authSwitch").addEventListener("click",()=>{
     state.mode=state.mode==="login"?"register":"login";
@@ -113,8 +115,10 @@ async function boot(){
     state.me=await api("/api/me");
     showAuth(false);
     startPresence();
-    await Promise.all([loadFriends(), loadGroups(), loadFriendRequests()]);
+    await Promise.all([loadFriends(false), loadGroups(false), loadFriendRequests()]);
+    renderFriendList();
     startFriendRefresh();
+    startFriendRequestRefresh();
     if(!state.activeFriend && !state.activeGroup){
       if(state.friends.length) await selectFriend(state.friends[0].username);
       else if(state.groups.length) await selectGroup(state.groups[0].id);
@@ -170,29 +174,26 @@ function startFriendRefresh(){
   refreshFriendStates();
   state.friendRefreshTimer=setInterval(refreshFriendStates,10000);
 }
-async function loadFriends(){
+async function loadFriends(shouldRender=true){
   const data=await api("/api/friends");
   state.friends=data.friends||[];
-  renderFriendList();
+  if(shouldRender)renderFriendList();
   if(state.activeFriend && !state.friends.some(f=>f.username===state.activeFriend)){
     state.activeFriend=null;
   }
   if(!state.friends.length && !state.groups.length) renderEmptyFriends();
 }
 
-async function loadGroups(){
+async function loadGroups(shouldRender=true){
   try{
     const data=await api("/api/groups");
     state.groups=data.groups||[];
   }catch{
     state.groups=[];
   }
-  renderFriendList();
+  if(shouldRender)renderFriendList();
   if(state.activeGroup && !state.groups.some(g=>Number(g.id)===Number(state.activeGroup))){
     state.activeGroup=null;
-  }
-  if(!state.activeFriend && !state.activeGroup && !state.friends.length && state.groups.length){
-    await selectGroup(state.groups[0].id);
   }
 }
 
@@ -248,6 +249,11 @@ function renderFriendList(){
     chatList.innerHTML='<div class="empty-friends"><strong>No chats in this filter.</strong><span>Switch back to All to see your conversations.</span></div>';
   }
 }
+function startFriendRequestRefresh(){
+  if(state.friendRequestTimer || !state.token)return;
+  state.friendRequestTimer=setInterval(loadFriendRequests,10000);
+}
+
 async function loadFriendRequests(){
   try{
     const data=await api("/api/friend-requests");
@@ -572,7 +578,7 @@ async function addFriend(){
 
 el("composer").addEventListener("submit",event=>{event.preventDefault();sendMessage()});
 el("newChatButton").addEventListener("click",addFriend);
-el("newGroupButton").addEventListener("click",createGroup);
+el("newGroupButton")?.addEventListener("click",createGroup);
 el("backButton").addEventListener("click",()=>sidebar.classList.remove("closed"));
 el("themeButton").addEventListener("click",()=>{
   document.body.classList.toggle("light-mode");

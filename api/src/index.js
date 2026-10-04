@@ -397,6 +397,127 @@ export default {
         return json(request, { ok: true, status: "pending", request_id: requestId, to: friend.username }, 201);
       }
 
+
+      if (url.pathname === "/api/groups" && request.method === "GET") {
+        const rows = await env.AJCHAT_DB.prepare(`
+          SELECT
+            g.id,
+            g.name,
+            g.created_at,
+            substr(upper(g.name), 1, 2) AS initials,
+            (SELECT body FROM messages m WHERE m.room_id = 'group:' || g.id ORDER BY m.id DESC LIMIT 1) AS last_message,
+            (SELECT created_at FROM messages m WHERE m.room_id = 'group:' || g.id ORDER BY m.id DESC LIMIT 1) AS last_message_time,
+            (SELECT COUNT(*) FROM group_members gm2 WHERE gm2.group_id = g.id) AS member_count
+          FROM groups g
+          JOIN group_members gm ON gm.group_id = g.id
+          WHERE gm.user_id = ?
+          ORDER BY COALESCE(last_message_time, 0) DESC, g.name COLLATE NOCASE
+        `).bind(user.id).all();
+
+        return json(request, {
+          groups: (rows.results || []).map(group => ({
+            ...group,
+            id: Number(group.id),
+            member_count: Number(group.member_count || 0),
+            room: "group:" + group.id
+          }))
+        });
+      }
+
+      if (url.pathname === "/api/groups" && request.method === "POST") {
+        const body = await bodyJson(request);
+        const name = typeof body.name === "string" ? body.name.trim().slice(0, 40) : "";
+        const rawMembers = Array.isArray(body.usernames) ? body.usernames : [];
+        const usernames = [...new Set(rawMembers.map(cleanUsername).filter(Boolean))];
+
+        if (name.length < 2) return json(request, { error: "Group name must be at least 2 characters." }, 400);
+        if (!usernames.length) return json(request, { error: "Add at least one friend to the group." }, 400);
+
+        const members = [];
+        for (const username of usernames) {
+          if (username === user.username.toLowerCase()) continue;
+          const person = await env.AJCHAT_DB
+            .prepare("SELECT id, username FROM users WHERE username = ? COLLATE NOCASE")
+            .bind(username)
+            .first();
+
+          if (!person) return json(request, { error: 'No AJChat user found with username "' + username + '".' }, 404);
+          if (!(await isFriend(env.AJCHAT_DB, user.id, person.id))) {
+            return json(request, { error: "You must be friends with @" + person.username + " before adding them to a group." }, 403);
+          }
+          members.push(person);
+        }
+
+        if (!members.length) return json(request, { error: "Choose at least one friend besides yourself." }, 400);
+
+        const inserted = await env.AJCHAT_DB
+          .prepare("INSERT INTO groups (name, owner_id) VALUES (?, ?)")
+          .bind(name, user.id)
+          .run();
+
+        const groupId = Number(inserted.meta?.last_row_id || 0);
+        const memberStatements = [
+          env.AJCHAT_DB.prepare("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)").bind(groupId, user.id),
+          ...members.map(person => env.AJCHAT_DB.prepare("INSERT INTO group_members (group_id, user_id) VALUES (?, ?)").bind(groupId, person.id))
+        ];
+        await env.AJCHAT_DB.batch(memberStatements);
+
+        return json(request, {
+          ok: true,
+          group: {
+            id: groupId,
+            name,
+            initials: initials(name),
+            member_count: members.length + 1,
+            room: "group:" + groupId
+          }
+        }, 201);
+      }
+
+      const groupMessageMatch = url.pathname.match(/^\/api\/groups\/(\d+)\/messages$/);
+      if (groupMessageMatch && (request.method === "GET" || request.method === "POST")) {
+        const groupId = Number(groupMessageMatch[1]);
+        const membership = await env.AJCHAT_DB
+          .prepare("SELECT g.id, g.name FROM groups g JOIN group_members gm ON gm.group_id = g.id WHERE g.id = ? AND gm.user_id = ?")
+          .bind(groupId, user.id)
+          .first();
+
+        if (!membership) return json(request, { error: "Group not found." }, 404);
+
+        const room = "group:" + groupId;
+
+        if (request.method === "POST") {
+          const body = await bodyJson(request);
+          const messageBody = cleanMessage(body.text);
+          if (!messageBody) return json(request, { error: "Message cannot be empty." }, 400);
+
+          const inserted = await env.AJCHAT_DB
+            .prepare("INSERT INTO messages (room_id, sender_id, recipient_id, body) VALUES (?, ?, ?, ?)")
+            .bind(room, user.id, user.id, messageBody)
+            .run();
+
+          return json(request, {
+            message: {
+              id: Number(inserted.meta?.last_row_id || 0),
+              body: messageBody,
+              created_at: Math.floor(Date.now() / 1000),
+              sender: user.username
+            }
+          }, 201);
+        }
+
+        const rows = await env.AJCHAT_DB.prepare(`
+          SELECT m.id, m.body, m.created_at, sender.username AS sender
+          FROM messages m
+          JOIN users sender ON sender.id = m.sender_id
+          WHERE m.room_id = ?
+          ORDER BY m.id DESC
+          LIMIT 100
+        `).bind(room).all();
+
+        return json(request, { messages: (rows.results || []).reverse(), group: membership });
+      }
+
       if (url.pathname === "/api/friend-requests" && request.method === "GET") {
         const incoming = await env.AJCHAT_DB.prepare(`
           SELECT r.id, r.created_at, u.username, u.id AS user_id,

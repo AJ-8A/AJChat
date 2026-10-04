@@ -238,7 +238,7 @@ function renderFriendList(){
     const last=group.last_message?" · "+escapeHTML(group.last_message):"";
     const time=group.last_message_time?formatTime(group.last_message_time):"";
     button.innerHTML="<div class=\"avatar group-avatar\">"+avatar+"</div>"+
-      "<div class="chat-meta"><div class="chat-meta-top"><strong>"+name+"</strong><time>"+time+"</time></div>"+
+      "<div class=\"chat-meta\"><div class=\"chat-meta-top\"><strong>"+name+"</strong><time>"+time+"</time></div>"+
       "<p><span class=\"group-presence\"><i></i>"+Number(group.member_count||0)+" members</span>"+last+"</p></div>";
     button.addEventListener("click",()=>selectGroup(group.id));
     showChatItem(button);

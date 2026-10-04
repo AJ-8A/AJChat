@@ -6,9 +6,13 @@ const state = {
   token: localStorage.getItem("ajchat_token") || "",
   me: null,
   friends: [],
+  groups: [],
   activeFriend: null,
+  activeGroup: null,
+  currentFilter: "all",
   socket: null,
   pollTimer: null,
+  groupPollTimer: null,
   messages: [],
   incomingRequests: [],
   outgoingRequests: [],
@@ -83,9 +87,11 @@ async function submitAuth(event){
     showAuth(false);
     startPresence();
     await loadFriends();
+    await loadGroups();
     await loadFriendRequests();
     startFriendRefresh();
     if(state.friends.length) selectFriend(state.friends[0].username);
+    else if(state.groups.length) selectGroup(state.groups[0].id);
     else renderEmptyFriends();
     setAuthMessage("");
     showToast("You're in. Find a friend to start chatting.");
@@ -110,6 +116,7 @@ async function boot(){
     showAuth(false);
     startPresence();
     await loadFriends();
+    await loadGroups();
     await loadFriendRequests();
     startFriendRefresh();
   }catch{
@@ -143,12 +150,16 @@ function startPresence(){
 async function refreshFriendStates(){
   if(!state.token)return;
   try{
-    const data=await api("/api/friends");
-    state.friends=data.friends||[];
+    const [friendData, groupData] = await Promise.all([api("/api/friends"), api("/api/groups")]);
+    state.friends=friendData.friends||[];
+    state.groups=groupData.groups||[];
     renderFriendList();
     if(state.activeFriend){
       const active=state.friends.find(f=>f.username===state.activeFriend);
       if(active)el("chatStatus").textContent=active.online?"Online now":"Offline — messages will be saved";
+    }else if(state.activeGroup){
+      const active=state.groups.find(g=>Number(g.id)===Number(state.activeGroup));
+      if(active)el("chatStatus").textContent=active.member_count+" members • group chat";
     }
   }catch{}
 }
@@ -165,13 +176,37 @@ async function loadFriends(){
   if(state.activeFriend && !state.friends.some(f=>f.username===state.activeFriend)){
     state.activeFriend=null;
   }
-  if(!state.activeFriend && state.friends.length) await selectFriend(state.friends[0].username);
-  if(!state.friends.length) renderEmptyFriends();
+  if(!state.activeFriend && !state.activeGroup && state.friends.length) await selectFriend(state.friends[0].username);
+  if(!state.friends.length && !state.groups.length) renderEmptyFriends();
+}
+
+async function loadGroups(){
+  const data=await api("/api/groups");
+  state.groups=data.groups||[];
+  renderFriendList();
+  if(state.activeGroup && !state.groups.some(g=>Number(g.id)===Number(state.activeGroup))){
+    state.activeGroup=null;
+  }
+  if(!state.activeFriend && !state.activeGroup && !state.friends.length && state.groups.length){
+    await selectGroup(state.groups[0].id);
+  }
+}
+
+function showChatItem(button){
+  chatList.appendChild(button);
 }
 
 function renderFriendList(){
   chatList.innerHTML="";
-  state.friends.forEach((friend)=>{
+  const filter=state.currentFilter;
+  const friends=state.friends.filter(friend => {
+    if(filter==="groups") return false;
+    if(filter==="unread") return Number(friend.unread_count||0)>0;
+    return true;
+  });
+  const groups=state.groups.filter(group => filter!=="unread" && filter==="groups" || filter==="all");
+
+  friends.forEach(friend=>{
     const button=document.createElement("button");
     button.type="button";
     button.className="chat-item"+(friend.username===state.activeFriend?" active":"");
@@ -182,13 +217,32 @@ function renderFriendList(){
     const name=escapeHTML(friend.username);
     const last=friend.last_message?" · "+escapeHTML(friend.last_message):"";
     const time=friend.last_message_time?formatTime(friend.last_message_time):"";
-    const badge=unread?"<span class=\"unread-count\">"+(unread>99?"99+":unread)+"</span>":"";
-    button.innerHTML="<div class=\"avatar\">"+avatar+"</div>"+
-      "<div class=\"chat-meta\"><div class=\"chat-meta-top\"><strong>"+name+"</strong><time>"+time+"</time></div>"+
-      "<p><span class=\"friend-presence "+presenceClass+"\"><i></i>"+presenceText+"</span>"+last+"</p></div>"+badge;
+    const badge=unread?"<span class="unread-count">"+(unread>99?"99+":unread)+"</span>":"";
+    button.innerHTML="<div class="avatar">"+avatar+"</div>"+
+      "<div class="chat-meta"><div class="chat-meta-top"><strong>"+name+"</strong><time>"+time+"</time></div>"+
+      "<p><span class="friend-presence "+presenceClass+"><i></i>"+presenceText+"</span>"+last+"</p></div>"+badge;
     button.addEventListener("click",()=>selectFriend(friend.username));
-    chatList.appendChild(button);
+    showChatItem(button);
   });
+
+  groups.forEach(group=>{
+    const button=document.createElement("button");
+    button.type="button";
+    button.className="chat-item group-chat-item"+(Number(group.id)===Number(state.activeGroup)?" active":"");
+    const avatar=escapeHTML(group.initials||group.name.slice(0,2).toUpperCase());
+    const name=escapeHTML(group.name);
+    const last=group.last_message?" · "+escapeHTML(group.last_message):"";
+    const time=group.last_message_time?formatTime(group.last_message_time):"";
+    button.innerHTML="<div class="avatar group-avatar">"+avatar+"</div>"+
+      "<div class="chat-meta"><div class="chat-meta-top"><strong>"+name+"</strong><time>"+time+"</time></div>"+
+      "<p><span class="group-presence"><i></i>"+Number(group.member_count||0)+" members</span>"+last+"</p></div>";
+    button.addEventListener("click",()=>selectGroup(group.id));
+    showChatItem(button);
+  });
+
+  if(!chatList.children.length && (state.friends.length||state.groups.length)){
+    chatList.innerHTML='<div class="empty-friends"><strong>No chats in this filter.</strong><span>Switch back to All to see your conversations.</span></div>';
+  }
 }
 async function loadFriendRequests(){
   try{
@@ -243,6 +297,9 @@ function formatTime(value){
 
 async function selectFriend(username){
   if(state.pollTimer){clearInterval(state.pollTimer);state.pollTimer=null;}
+  if(state.groupPollTimer){clearInterval(state.groupPollTimer);state.groupPollTimer=null;}
+  if(state.socket){try{state.socket.close()}catch{}}
+  state.activeGroup=null;
   state.activeFriend=username;
   renderFriendList();
   const friend=state.friends.find(f=>f.username===username);
@@ -265,6 +322,32 @@ async function selectFriend(username){
   }
 }
 
+async function selectGroup(groupId){
+  if(state.pollTimer){clearInterval(state.pollTimer);state.pollTimer=null;}
+  if(state.groupPollTimer){clearInterval(state.groupPollTimer);state.groupPollTimer=null;}
+  if(state.socket){try{state.socket.close()}catch{} state.socket=null;}
+  state.activeFriend=null;
+  state.activeGroup=Number(groupId);
+  renderFriendList();
+
+  const group=state.groups.find(g=>Number(g.id)===Number(groupId));
+  if(!group)return;
+
+  el("chatAvatar").textContent=(group.initials||group.name.slice(0,2)).toUpperCase();
+  el("chatName").textContent=group.name;
+  el("chatStatus").textContent=Number(group.member_count||0)+" members • group chat";
+  sidebar.classList.add("closed");
+
+  try{
+    const data=await api("/api/groups/"+group.id+"/messages");
+    state.messages=data.messages||[];
+    renderMessages();
+    startGroupPolling();
+  }catch(error){
+    showToast(error.message);
+  }
+}
+
 function renderMessages(){
   messagesBox.innerHTML="";
   if(!state.messages.length){
@@ -280,6 +363,28 @@ function renderMessages(){
     messagesBox.appendChild(row);
   });
   messagesBox.scrollTop=messagesBox.scrollHeight;
+}
+
+function startGroupPolling(){
+  if(state.groupPollTimer || !state.activeGroup || !state.token) return;
+  const poll=async()=>{
+    if(!state.activeGroup || !state.token)return;
+    try{
+      const data=await api("/api/groups/"+state.activeGroup+"/messages");
+      const incoming=data.messages||[];
+      const known=new Set(state.messages.map(m=>String(m.id)));
+      let changed=false;
+      for(const message of incoming){
+        if(!known.has(String(message.id))){state.messages.push(message);changed=true;}
+      }
+      if(changed){
+        state.messages=state.messages.slice(-100);
+        renderMessages();
+      }
+    }catch{}
+  };
+  poll();
+  state.groupPollTimer=setInterval(poll,1000);
 }
 
 function startPolling(){
@@ -360,7 +465,28 @@ function connectSocket(retry=0){
 
 async function sendMessage(){
   const text=input.value.trim();
-  if(!text || !state.activeFriend)return;
+  if(!text || (!state.activeFriend && !state.activeGroup))return;
+
+  if(state.activeGroup){
+    input.disabled=true;
+    try{
+      const data=await api("/api/groups/"+state.activeGroup+"/messages",{method:"POST",body:JSON.stringify({text})});
+      if(data.message && !state.messages.some(m=>String(m.id)===String(data.message.id))){
+        state.messages.push(data.message);
+        state.messages=state.messages.slice(-100);
+        renderMessages();
+      }
+      input.value="";
+      input.focus();
+      el("chatStatus").textContent="sent to group";
+    }catch(error){
+      showToast(error.message);
+    }finally{
+      input.disabled=false;
+      input.focus();
+    }
+    return;
+  }
 
   const friend=state.activeFriend;
   input.disabled=true;
@@ -398,6 +524,24 @@ async function sendMessage(){
   }
 }
 
+async function createGroup(){
+  if(!state.me)return;
+  const name=prompt("Group name:");
+  if(!name || name.trim().length<2)return;
+  const members=prompt("Friend usernames, separated by commas:");
+  if(!members)return;
+  const usernames=members.split(",").map(v=>v.trim()).filter(Boolean);
+  if(!usernames.length)return;
+  try{
+    const data=await api("/api/groups",{method:"POST",body:JSON.stringify({name:name.trim(),usernames})});
+    await loadGroups();
+    await selectGroup(data.group.id);
+    showToast("Group created.");
+  }catch(error){
+    showToast(error.message);
+  }
+}
+
 async function addFriend(){
   if(!state.me)return;
   const username=prompt("Enter your friend's AJChat username:");
@@ -424,6 +568,7 @@ async function addFriend(){
 
 el("composer").addEventListener("submit",event=>{event.preventDefault();sendMessage()});
 el("newChatButton").addEventListener("click",addFriend);
+el("newGroupButton").addEventListener("click",createGroup);
 el("backButton").addEventListener("click",()=>sidebar.classList.remove("closed"));
 el("themeButton").addEventListener("click",()=>{
   document.body.classList.toggle("light-mode");
@@ -431,6 +576,14 @@ el("themeButton").addEventListener("click",()=>{
 });
 el("emojiButton").addEventListener("click",()=>{input.value+=" 😊";input.focus()});
 el("attachButton").addEventListener("click",()=>showToast("Media upload comes next — real chat is already live."));
+document.querySelectorAll(".filter-pill").forEach(button=>{
+  button.addEventListener("click",()=>{
+    document.querySelectorAll(".filter-pill").forEach(item=>item.classList.remove("active"));
+    button.classList.add("active");
+    state.currentFilter=button.dataset.filter||"all";
+    renderFriendList();
+  });
+});
 el("chatSearch").addEventListener("input",event=>{
   const q=event.target.value.trim().toLowerCase();
   document.querySelectorAll(".chat-item").forEach(item=>item.classList.toggle("hidden",!item.textContent.toLowerCase().includes(q)));

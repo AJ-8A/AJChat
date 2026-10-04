@@ -1,0 +1,29 @@
+{
+  "name": "ajchat-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-01",
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "AJCHAT_DB",
+      "database_name": "ajchat-db",
+      "database_id": "REPLACE_WITH_YOUR_AJCHAT_D1_DATABASE_ID"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "CHAT_ROOMS",
+        "class_name": "ChatRoom"
+      }
+    ]
+  },
+  "exports": {
+    "ChatRoom": {
+      "type": "durable-object",
+      "storage": "sqlite"
+    }
+  }
+}

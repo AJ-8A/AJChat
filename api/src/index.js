@@ -101,6 +101,13 @@ function initials(username) {
   return String(username || "").slice(0, 2).toUpperCase();
 }
 
+function adminAuthorized(request, env) {
+  const configured = typeof env.ADMIN_TOKEN === "string" ? env.ADMIN_TOKEN : "";
+  const header = request.headers.get("Authorization") || "";
+  const provided = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  return Boolean(configured && provided && constantTime(provided, configured));
+}
+
 async function isFriend(db, userId, friendId) {
   return Boolean(await db
     .prepare("SELECT 1 FROM friendships WHERE user_id = ? AND friend_id = ?")
@@ -125,6 +132,31 @@ export default {
         return json(request, { ok: true, version: "messages-v2", build: "2026-10-04" });
       }
 
+      if (url.pathname === "/api/admin/overview" && request.method === "GET") {
+        if (!adminAuthorized(request, env)) {
+          return json(request, { error: "Unauthorized" }, 401);
+        }
+
+        const [users, messages, friendships, pendingRequests, recentUsers, recentRequests] = await Promise.all([
+          env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM users").first(),
+          env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM messages").first(),
+          env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM friendships").first(),
+          env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM friend_requests WHERE status = 'pending'").first(),
+          env.AJCHAT_DB.prepare("SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 20").all(),
+          env.AJCHAT_DB.prepare("SELECT r.id, r.status, r.created_at, sender.username AS sender, receiver.username AS receiver FROM friend_requests r JOIN users sender ON sender.id = r.sender_id JOIN users receiver ON receiver.id = r.receiver_id ORDER BY r.id DESC LIMIT 20").all()
+        ]);
+
+        return json(request, {
+          stats: {
+            users: Number(users?.count || 0),
+            messages: Number(messages?.count || 0),
+            friendships: Number(friendships?.count || 0),
+            pending_requests: Number(pendingRequests?.count || 0)
+          },
+          recent_users: recentUsers.results || [],
+          recent_requests: recentRequests.results || []
+        });
+      }
       if (url.pathname === "/api/auth/register" && request.method === "POST") {
         const body = await bodyJson(request);
         const username = cleanUsername(body.username);

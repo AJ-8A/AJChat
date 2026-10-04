@@ -162,6 +162,7 @@ async function selectFriend(username){
     const data=await api("/api/messages/"+encodeURIComponent(username));
     state.messages=data.messages||[];
     renderMessages();
+    startPolling();
     connectSocket();
   }catch(error){
     showToast(error.message);
@@ -217,8 +218,8 @@ function connectSocket(retry=0){
   state.socket=socket;
   socket.onopen=()=>{
     if(state.socket!==socket || state.activeFriend!==expectedFriend) return;
-    if(state.pollTimer){clearInterval(state.pollTimer);state.pollTimer=null;}
-    el("chatStatus").textContent="connected";
+    startPolling();
+    el("chatStatus").textContent="online";
   };
   socket.onmessage=(event)=>{
     if(state.socket!==socket || state.activeFriend!==expectedFriend) return;
@@ -237,8 +238,8 @@ function connectSocket(retry=0){
     if(state.socket!==socket || state.activeFriend!==expectedFriend) return;
     state.socket=null;
     if(document.visibilityState==="hidden") return;
-    const reason=event.reason?(" • "+event.reason):"";
-    el("chatStatus").textContent="connection closed ("+event.code+")"+reason;
+    startPolling();
+    el("chatStatus").textContent="offline — messages will sync";
     const delay=Math.min(1600*Math.max(1,retry+1),8000);
     setTimeout(()=>{
       if(state.activeFriend===expectedFriend && state.token) connectSocket(retry+1);
@@ -246,7 +247,8 @@ function connectSocket(retry=0){
   };
   socket.onerror=()=>{
     if(state.socket===socket && state.activeFriend===expectedFriend){
-      el("chatStatus").textContent="WebSocket error";
+      startPolling();
+      el("chatStatus").textContent="offline — messages will sync";
     }
   };
 }

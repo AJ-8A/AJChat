@@ -157,6 +157,50 @@ export default {
           recent_requests: recentRequests.results || []
         });
       }
+      if (url.pathname === "/api/admin/friend" && request.method === "POST") {
+        if (!adminAuthorized(request, env)) {
+          return json(request, { error: "Unauthorized" }, 401);
+        }
+
+        const body = await bodyJson(request);
+        const usernameA = cleanUsername(body.username_a);
+        const usernameB = cleanUsername(body.username_b);
+
+        if (!usernameA || !usernameB) {
+          return json(request, { error: "Enter both usernames." }, 400);
+        }
+        if (usernameA === usernameB) {
+          return json(request, { error: "Choose two different users." }, 400);
+        }
+
+        const users = await env.AJCHAT_DB
+          .prepare("SELECT id, username FROM users WHERE username IN (?, ?) COLLATE NOCASE")
+          .bind(usernameA, usernameB)
+          .all();
+
+        const found = users.results || [];
+        if (found.length !== 2) {
+          const foundNames = new Set(found.map(row => String(row.username).toLowerCase()));
+          const missing = [usernameA, usernameB].filter(name => !foundNames.has(name));
+          return json(request, { error: "User not found: " + missing.join(", ") }, 404);
+        }
+
+        const first = found.find(row => String(row.username).toLowerCase() === usernameA);
+        const second = found.find(row => String(row.username).toLowerCase() === usernameB);
+
+        await env.AJCHAT_DB.batch([
+          env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO friendships (user_id, friend_id) VALUES (?, ?)").bind(first.id, second.id),
+          env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO friendships (user_id, friend_id) VALUES (?, ?)").bind(second.id, first.id),
+          env.AJCHAT_DB.prepare("UPDATE friend_requests SET status = 'accepted', updated_at = unixepoch() WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)").bind(first.id, second.id, second.id, first.id)
+        ]);
+
+        return json(request, {
+          ok: true,
+          status: "friends",
+          users: [first.username, second.username]
+        });
+      }
+
       if (url.pathname === "/api/auth/register" && request.method === "POST") {
         const body = await bodyJson(request);
         const username = cleanUsername(body.username);

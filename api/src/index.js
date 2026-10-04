@@ -265,6 +265,19 @@ export default {
         return json(request, { error: "Authentication required." }, 401);
       }
 
+      if (url.pathname === "/api/presence" && request.method === "POST") {
+        const now = Math.floor(Date.now() / 1000);
+        await env.AJCHAT_DB
+          .prepare(`
+            INSERT INTO user_presence (user_id, last_seen)
+            VALUES (?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET last_seen = excluded.last_seen
+          `)
+          .bind(user.id, now)
+          .run();
+        return json(request, { ok: true, online: true });
+      }
+
       if (url.pathname === "/api/friends" && request.method === "GET") {
         const rows = await env.AJCHAT_DB
           .prepare(`
@@ -272,6 +285,7 @@ export default {
               u.username,
               u.id AS user_id,
               substr(upper(u.username), 1, 2) AS initials,
+              CASE WHEN COALESCE(p.last_seen, 0) >= unixepoch() - 45 THEN 1 ELSE 0 END AS online,
               (
                 SELECT body FROM messages m
                 WHERE m.room_id = CASE
@@ -287,17 +301,40 @@ export default {
                   ELSE 'dm:' || u.id || ':' || ?
                 END
                 ORDER BY m.id DESC LIMIT 1
-              ) AS last_message_time
+              ) AS last_message_time,
+              (
+                SELECT COUNT(*)
+                FROM messages m
+                WHERE m.room_id = CASE
+                  WHEN ? < u.id THEN 'dm:' || ? || ':' || u.id
+                  ELSE 'dm:' || u.id || ':' || ?
+                END
+                  AND m.sender_id = u.id
+                  AND m.recipient_id = ?
+                  AND m.id > COALESCE((
+                    SELECT last_read_message_id
+                    FROM friend_read_state rs
+                    WHERE rs.user_id = ? AND rs.friend_id = u.id
+                  ), 0)
+              ) AS unread_count
             FROM friendships f
             JOIN users u ON u.id = f.friend_id
+            LEFT JOIN user_presence p ON p.user_id = u.id
             WHERE f.user_id = ?
             ORDER BY COALESCE(last_message_time, 0) DESC, u.username COLLATE NOCASE
           `)
-          .bind(user.id,user.id,user.id,user.id,user.id,user.id,user.id)
+          .bind(
+            user.id,user.id,user.id,
+            user.id,user.id,user.id,
+            user.id,user.id,user.id,user.id,user.id,
+            user.id
+          )
           .all();
 
         const friends = (rows.results || []).map(friend => ({
           ...friend,
+          online: Boolean(Number(friend.online)),
+          unread_count: Number(friend.unread_count || 0),
           room: roomFor(user.id, friend.user_id)
         }));
 
@@ -423,6 +460,39 @@ export default {
           status: "accepted",
           friend: acceptedFriend ? { username: acceptedFriend.username, room: roomFor(user.id, acceptedFriend.id) } : null
         });
+      }
+
+      const readMatch = url.pathname.match(/^\/api\/messages\/([^/]+)\/read$/);
+      if (readMatch && request.method === "POST") {
+        const username = decodeURIComponent(readMatch[1]);
+        const friend = await env.AJCHAT_DB
+          .prepare("SELECT id FROM users WHERE username = ? COLLATE NOCASE")
+          .bind(username)
+          .first();
+
+        if (!friend || !(await isFriend(env.AJCHAT_DB, user.id, friend.id))) {
+          return json(request, { error: "Friend not found." }, 404);
+        }
+
+        const room = roomFor(user.id, friend.id);
+        const latest = await env.AJCHAT_DB
+          .prepare("SELECT COALESCE(MAX(id), 0) AS id FROM messages WHERE room_id = ? AND sender_id = ? AND recipient_id = ?")
+          .bind(room, friend.id, user.id)
+          .first();
+
+        const latestId = Number(latest?.id || 0);
+        await env.AJCHAT_DB
+          .prepare(`
+            INSERT INTO friend_read_state (user_id, friend_id, last_read_message_id)
+            VALUES (?, ?, ?)
+            ON CONFLICT(user_id, friend_id)
+            DO UPDATE SET last_read_message_id = MAX(last_read_message_id, excluded.last_read_message_id),
+                          updated_at = unixepoch()
+          `)
+          .bind(user.id, friend.id, latestId)
+          .run();
+
+        return json(request, { ok: true, last_read_message_id: latestId });
       }
 
       const messageMatch = url.pathname.match(/^\/api\/messages\/([^/]+)$/);

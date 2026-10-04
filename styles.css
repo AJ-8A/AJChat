@@ -43,7 +43,7 @@ button{color:inherit}
   width:min(1500px,100%);
   height:min(940px,calc(100vh - 36px));
   display:grid;
-  grid-template-columns:330px minmax(0,1fr) 280px;
+  grid-template-columns:330px minmax(0,1fr);
   overflow:hidden;
   border:1px solid var(--border-strong);
   border-radius:var(--radius);
@@ -113,6 +113,9 @@ button{color:inherit}
 .chat-meta strong{font-size:.79rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .chat-meta time{color:var(--muted-2);font-size:.61rem}
 .chat-meta p{margin:4px 0 0;color:var(--muted);font-size:.67rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.group-avatar{background:linear-gradient(145deg,#e2c9ff,#9f75d8)!important;color:#14091f!important}
+.group-presence{display:inline-flex;align-items:center;gap:4px;color:#c6a9f3}
+.group-presence i{width:6px;height:6px;border-radius:50%;background:#a783df;box-shadow:0 0 9px rgba(167,131,223,.55)}
 .unread-count{min-width:19px;height:19px;padding:0 5px;display:grid;place-items:center;border-radius:999px;background:var(--accent);color:#041b14;font-size:.6rem;font-weight:800}
 .sidebar-footer{margin-top:auto;border-top:1px solid var(--border);padding:13px 14px;display:flex;align-items:center;justify-content:space-between}
 .profile-mini{display:flex;align-items:center;gap:10px}

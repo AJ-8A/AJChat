@@ -80,22 +80,38 @@ async function submitAuth(event){
   const username=el("authUsername").value.trim();
   const password=el("authPassword").value;
   setAuthMessage("Connecting…");
+
   try{
-    const data=await api("/api/auth/"+state.mode,{method:"POST",body:JSON.stringify({username,password})});
+    const data=await api("/api/auth/"+state.mode,{
+      method:"POST",
+      body:JSON.stringify({username,password})
+    });
+
     state.token=data.token;
     state.me=data.user;
     localStorage.setItem("ajchat_token",state.token);
+
     showAuth(false);
+    setAuthMessage("");
+    showToast(state.mode==="register"?"Account created. You're in.":"You're in.");
+
     startPresence();
-    await Promise.all([loadFriends(false), loadGroups(false), loadFriendRequests()]);
-    renderFriendList();
     startFriendRefresh();
     startFriendRequestRefresh();
-    if(state.friends.length) await selectFriend(state.friends[0].username);
-    else if(state.groups.length) await selectGroup(state.groups[0].id);
-    else renderEmptyFriends();
-    setAuthMessage("");
-    showToast("You're in. Find a friend to start chatting.");
+
+    Promise.all([
+      loadFriends(false),
+      loadGroups(false),
+      loadFriendRequests()
+    ]).then(async()=>{
+      renderFriendList();
+      if(state.friends.length) await selectFriend(state.friends[0].username);
+      else if(state.groups.length) await selectGroup(state.groups[0].id);
+      else renderEmptyFriends();
+    }).catch(()=>{
+      renderFriendList();
+      renderEmptyFriends();
+    });
   }catch(error){
     setAuthMessage(error.message,true);
   }
@@ -115,15 +131,24 @@ async function boot(){
     state.me=await api("/api/me");
     showAuth(false);
     startPresence();
-    await Promise.all([loadFriends(false), loadGroups(false), loadFriendRequests()]);
-    renderFriendList();
     startFriendRefresh();
     startFriendRequestRefresh();
-    if(!state.activeFriend && !state.activeGroup){
-      if(state.friends.length) await selectFriend(state.friends[0].username);
-      else if(state.groups.length) await selectGroup(state.groups[0].id);
-      else renderEmptyFriends();
-    }
+
+    Promise.all([
+      loadFriends(false),
+      loadGroups(false),
+      loadFriendRequests()
+    ]).then(async()=>{
+      renderFriendList();
+      if(!state.activeFriend && !state.activeGroup){
+        if(state.friends.length) await selectFriend(state.friends[0].username);
+        else if(state.groups.length) await selectGroup(state.groups[0].id);
+        else renderEmptyFriends();
+      }
+    }).catch(()=>{
+      renderFriendList();
+      renderEmptyFriends();
+    });
   }catch{
     localStorage.removeItem("ajchat_token");
     state.token="";

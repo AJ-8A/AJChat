@@ -205,7 +205,7 @@ function startPolling(){
     }catch{}
   };
   poll();
-  state.pollTimer=setInterval(poll,2500);
+  state.pollTimer=setInterval(poll,1000);
 }
 
 function connectSocket(retry=0){
@@ -257,25 +257,39 @@ async function sendMessage(){
   const text=input.value.trim();
   if(!text || !state.activeFriend)return;
 
-  if(state.socket && state.socket.readyState===WebSocket.OPEN){
-    state.socket.send(JSON.stringify({type:"message",text}));
-    input.value="";
-    return;
-  }
-
+  const friend=state.activeFriend;
+  input.disabled=true;
   try{
-    const data=await api("/api/messages/"+encodeURIComponent(state.activeFriend),{
+    const data=await api("/api/messages/"+encodeURIComponent(friend),{
       method:"POST",
       body:JSON.stringify({text})
     });
+
     if(data.message && !state.messages.some(m=>String(m.id)===String(data.message.id))){
       state.messages.push(data.message);
       state.messages=state.messages.slice(-100);
       renderMessages();
     }
+
     input.value="";
+    input.focus();
+
+    if(state.socket && state.socket.readyState===WebSocket.OPEN){
+      el("chatStatus").textContent="sent";
+      setTimeout(()=>{
+        if(state.activeFriend===friend && state.socket?.readyState===WebSocket.OPEN){
+          el("chatStatus").textContent="online";
+        }
+      },900);
+    }else{
+      startPolling();
+      el("chatStatus").textContent="offline — saved & syncing";
+    }
   }catch(error){
     showToast(error.message);
+  }finally{
+    input.disabled=false;
+    input.focus();
   }
 }
 

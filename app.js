@@ -8,6 +8,7 @@ const state = {
   friends: [],
   activeFriend: null,
   socket: null,
+  pollTimer: null,
   messages: []
 };
 
@@ -149,6 +150,7 @@ function formatTime(value){
 }
 
 async function selectFriend(username){
+  if(state.pollTimer){clearInterval(state.pollTimer);state.pollTimer=null;}
   state.activeFriend=username;
   renderFriendList();
   const friend=state.friends.find(f=>f.username===username);
@@ -183,6 +185,28 @@ function renderMessages(){
   messagesBox.scrollTop=messagesBox.scrollHeight;
 }
 
+function startPolling(){
+  if(state.pollTimer || !state.activeFriend || !state.token) return;
+  const poll=async()=>{
+    if(!state.activeFriend || !state.token) return;
+    try{
+      const data=await api("/api/messages/"+encodeURIComponent(state.activeFriend));
+      const incoming=data.messages||[];
+      const known=new Set(state.messages.map(m=>String(m.id)));
+      let changed=false;
+      for(const message of incoming){
+        if(!known.has(String(message.id))){ state.messages.push(message); changed=true; }
+      }
+      if(changed){
+        state.messages=state.messages.slice(-100);
+        renderMessages();
+      }
+    }catch{}
+  };
+  poll();
+  state.pollTimer=setInterval(poll,2500);
+}
+
 function connectSocket(retry=0){
   if(!state.activeFriend||!state.token)return;
   if(state.socket){try{state.socket.close()}catch{}}
@@ -193,6 +217,7 @@ function connectSocket(retry=0){
   state.socket=socket;
   socket.onopen=()=>{
     if(state.socket!==socket || state.activeFriend!==expectedFriend) return;
+    if(state.pollTimer){clearInterval(state.pollTimer);state.pollTimer=null;}
     el("chatStatus").textContent="connected";
   };
   socket.onmessage=(event)=>{
@@ -226,15 +251,30 @@ function connectSocket(retry=0){
   };
 }
 
-function sendMessage(){
+async function sendMessage(){
   const text=input.value.trim();
-  if(!text)return;
-  if(!state.socket||state.socket.readyState!==WebSocket.OPEN){
-    showToast("Chat is reconnecting…");
+  if(!text || !state.activeFriend)return;
+
+  if(state.socket && state.socket.readyState===WebSocket.OPEN){
+    state.socket.send(JSON.stringify({type:"message",text}));
+    input.value="";
     return;
   }
-  state.socket.send(JSON.stringify({type:"message",text}));
-  input.value="";
+
+  try{
+    const data=await api("/api/messages/"+encodeURIComponent(state.activeFriend),{
+      method:"POST",
+      body:JSON.stringify({text})
+    });
+    if(data.message && !state.messages.some(m=>String(m.id)===String(data.message.id))){
+      state.messages.push(data.message);
+      state.messages=state.messages.slice(-100);
+      renderMessages();
+    }
+    input.value="";
+  }catch(error){
+    showToast(error.message);
+  }
 }
 
 async function addFriend(){

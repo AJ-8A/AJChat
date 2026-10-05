@@ -11,6 +11,31 @@ let dashboardTimer=null;
 function setLoginStatus(text,error=false){loginStatus.textContent=text||"";loginStatus.className="status"+(error?" error":"")}
 function setDashboardStatus(text,error=false){dashboardStatus.textContent=text||"";dashboardStatus.className="dashboard-status"+(error?" error":"")}
 function headers(){return {Authorization:"Bearer "+(sessionStorage.getItem(tokenKey)||"")}}
+async function searchAdminUsers(){
+  const q=document.getElementById("userSearchInput").value.trim();
+  const box=document.getElementById("adminUserResults");
+  box.innerHTML="<div class='online-empty'>Searching…</div>";
+  try{
+    const response=await fetch(API_BASE+"/api/admin/users?q="+encodeURIComponent(q),{headers:headers(),cache:"no-store"});
+    let data={};try{data=await response.json()}catch{}
+    if(response.status===401){setDashboardStatus("Admin token rejected.",true);return}
+    if(!response.ok)throw new Error(data.error||"Search failed.");
+    box.innerHTML=(data.users||[]).map(user=>{
+      const action=user.suspended?"Unsuspend":"Suspend 7d";
+      return "<article class='admin-user-row'><div><strong>"+esc(user.username)+"</strong><span>"+(user.online?"🟢 Online":"Offline")+" · "+(user.role||"user")+(user.suspended?" · suspended":"")+"</span></div><div><button type='button' data-admin-action='"+(user.suspended?"unsuspend":"suspend")+"' data-user-id='"+user.id+"'>"+action+"</button><button type='button' class='danger-admin' data-admin-action='delete' data-user-id='"+user.id+"'>Delete</button></div></article>";
+    }).join("")||"<div class='online-empty'>No users found.</div>";
+  }catch(error){box.innerHTML="<div class='online-empty'>"+esc(error.message)+"</div>"}
+}
+async function moderateUser(id,action){
+  try{
+    const response=await fetch(API_BASE+"/api/admin/users/"+id+"/"+action,{method:"POST",headers:headers(),cache:"no-store"});
+    let data={};try{data=await response.json()}catch{}
+    if(!response.ok)throw new Error(data.error||"Action failed.");
+    setDashboardStatus((data.username||"User")+" — "+action+" complete.");
+    await searchAdminUsers();await loadDashboard();
+  }catch(error){setDashboardStatus(error.message,true)}
+}
+
 async function loadDashboard(){
   const response=await fetch(API_BASE+"/api/admin/overview",{headers:headers(),cache:"no-store"});
   let data={};try{data=await response.json()}catch{}
@@ -101,6 +126,15 @@ loginForm.addEventListener("submit",async event=>{
   try{await loadDashboard();if(sessionStorage.getItem(tokenKey))showDashboard()}catch(error){sessionStorage.removeItem(tokenKey);setLoginStatus(error.message,true)}
 });
 document.getElementById("forceFriendForm").addEventListener("submit",makeFriends);
+document.getElementById("userSearchButton").addEventListener("click",searchAdminUsers);
+document.getElementById("userSearchInput").addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();searchAdminUsers()}});
+document.getElementById("adminUserResults").addEventListener("click",event=>{
+  const button=event.target.closest("button[data-admin-action]");if(!button)return;
+  const action=button.dataset.adminAction,id=button.dataset.userId;
+  if(action==="delete"&&!confirm("Delete this account permanently?"))return;
+  moderateUser(id,action);
+});
+
 document.getElementById("refreshButton").addEventListener("click",()=>loadDashboard().catch(e=>setDashboardStatus(e.message,true)));
 document.getElementById("logoutButton").addEventListener("click",()=>{sessionStorage.removeItem(tokenKey);tokenInput.value="";showLogin("Locked.")});
 if(sessionStorage.getItem(tokenKey))showDashboard();

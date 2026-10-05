@@ -82,6 +82,8 @@
 
           <div class="chat-actions">
             <button class="icon-button" id="chatSearchButton" type="button" title="Search in chat">⌕</button>
+            <button class="icon-button" id="audioCallButton" type="button" title="Voice call">☎</button>
+            <button class="icon-button" id="videoCallButton" type="button" title="Video call">▣</button>
             <button class="icon-button" id="notifyButton" type="button" title="Notifications">♢</button>
             <button class="icon-button" id="chatMoreButton" type="button" title="More">•••</button>
           </div>
@@ -147,6 +149,33 @@
       <p class="profile-note" id="profileNote"></p>
     </div>
   </div>
+  <section class="call-overlay hidden" id="callOverlay" aria-live="polite">
+    <div class="call-card">
+      <div class="call-topline"><span class="eyebrow">AJCHAT CALL</span><span id="callTimer">00:00</span></div>
+      <div class="call-videos">
+        <div class="remote-stage"><video id="remoteVideo" autoplay playsinline></video><div class="call-placeholder" id="callPlaceholder">Connecting…</div></div>
+        <video class="local-stage" id="localVideo" autoplay playsinline muted></video>
+        <audio id="remoteAudio" autoplay></audio>
+      </div>
+      <div class="call-person"><div class="avatar" id="callAvatar">AJ</div><div><strong id="callName">AJChat user</strong><span id="callState">Calling…</span></div></div>
+      <div class="call-controls">
+        <button class="call-control" id="callMuteButton" type="button">🎙</button>
+        <button class="call-control" id="callCameraButton" type="button">▣</button>
+        <button class="call-control end" id="callEndButton" type="button">✕</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="incoming-call-overlay hidden" id="incomingCallOverlay">
+    <div class="incoming-call-card">
+      <div class="profile-avatar-editor">☎</div>
+      <span class="eyebrow">INCOMING CALL</span>
+      <h2 id="incomingCallName">AJChat user</h2>
+      <p id="incomingCallMode">Voice call</p>
+      <div class="modal-actions"><button class="button" id="acceptCallButton" type="button">Accept</button><button class="button ghost-button" id="rejectCallButton" type="button">Decline</button></div>
+    </div>
+  </section>
+
   <div class="emoji-panel hidden" id="emojiPanel" aria-label="Emoji picker">
     <button type="button">😀</button><button type="button">😂</button><button type="button">❤️</button><button type="button">👍</button>
     <button type="button">🔥</button><button type="button">😮</button><button type="button">😢</button><button type="button">🎉</button>

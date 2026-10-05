@@ -5,12 +5,6 @@
   "observability": {
     "enabled": true
   },
-  "r2_buckets": [
-    {
-      "binding": "CHAT_FILES",
-      "bucket_name": "ajchat-files"
-    }
-  ],
   "d1_databases": [
     {
       "binding": "AJCHAT_DB",

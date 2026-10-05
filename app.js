@@ -21,7 +21,14 @@ const state = {
   friendRequestTimer: null,
   typingTimer: null,
   replyTo: null,
-  notifications: localStorage.getItem("ajchat_notifications") !== "off"
+  notifications: localStorage.getItem("ajchat_notifications") !== "off",
+  rtc: null,
+  localStream: null,
+  callMode: null,
+  callPeer: null,
+  callTimer: null,
+  callStartedAt: 0,
+  incomingCall: null
 };
 
 const el = id => document.getElementById(id);
@@ -441,6 +448,128 @@ async function selectGroup(groupId){
   }catch(error){
     showToast(error.message);
   }
+}
+
+
+function callSocketSend(payload){
+  if(state.socket && state.socket.readyState===WebSocket.OPEN){
+    try{state.socket.send(JSON.stringify(payload));return true}catch{}
+  }
+  return false;
+}
+
+function resetCallUI(){
+  clearInterval(state.callTimer);state.callTimer=null;state.callStartedAt=0;
+  el("callOverlay")?.classList.add("hidden");
+  el("incomingCallOverlay")?.classList.add("hidden");
+  const local=el("localVideo"),remote=el("remoteVideo"),audio=el("remoteAudio");
+  if(local)local.srcObject=null;if(remote)remote.srcObject=null;if(audio)audio.srcObject=null;
+  const stateText=el("callState");if(stateText)stateText.textContent="";
+}
+
+function cleanupCall(sendEnd=false){
+  if(sendEnd)callSocketSend({type:"call-end"});
+  try{state.rtc?.close()}catch{}
+  state.rtc=null;
+  state.localStream?.getTracks().forEach(track=>track.stop());
+  state.localStream=null;
+  state.callMode=null;state.callPeer=null;state.incomingCall=null;
+  resetCallUI();
+}
+
+function updateCallTimer(){
+  if(!state.callStartedAt)return;
+  const seconds=Math.floor((Date.now()-state.callStartedAt)/1000);
+  const mm=String(Math.floor(seconds/60)).padStart(2,"0");
+  const ss=String(seconds%60).padStart(2,"0");
+  if(el("callTimer"))el("callTimer").textContent=mm+":"+ss;
+}
+
+async function preparePeer(mode){
+  if(!state.socket || state.socket.readyState!==WebSocket.OPEN) throw new Error("Chat connection is not ready.");
+  state.callMode=mode;
+  state.localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:mode==="video"});
+  const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
+  state.rtc=pc;
+  state.localStream.getTracks().forEach(track=>pc.addTrack(track,state.localStream));
+  pc.onicecandidate=e=>{if(e.candidate)callSocketSend({type:"call-ice",candidate:e.candidate})};
+  pc.ontrack=e=>{
+    const stream=e.streams[0];
+    if(mode==="video"){const video=el("remoteVideo");if(video)video.srcObject=stream;}
+    const audio=el("remoteAudio");if(audio)audio.srcObject=stream;
+  };
+  pc.onconnectionstatechange=()=>{
+    const current=pc.connectionState;
+    if(el("callState"))el("callState").textContent=current==="connected"?"Connected":current==="failed"?"Connection failed":current;
+    if(current==="connected"&&!state.callStartedAt){state.callStartedAt=Date.now();clearInterval(state.callTimer);state.callTimer=setInterval(updateCallTimer,1000);}
+    if(["failed","closed","disconnected"].includes(current)&&state.rtc===pc){setTimeout(()=>{if(state.rtc===pc)cleanupCall(false)},9000)}
+  };
+  if(mode==="video"){
+    const local=el("localVideo");if(local)local.srcObject=state.localStream;
+  }
+  return pc;
+}
+
+async function startCall(mode){
+  if(!state.activeFriend){showToast("Open a friend chat first.");return}
+  if(!window.isSecureContext || !navigator.mediaDevices?.getUserMedia){showToast("Calls need a secure browser connection.");return}
+  if(!state.socket || state.socket.readyState!==WebSocket.OPEN){connectSocket();showToast("Connecting to your friend…");return}
+  cleanupCall(false);
+  try{
+    await preparePeer(mode);
+    const friend=state.activeFriend;
+    el("callName").textContent="@"+friend;
+    el("callAvatar").textContent=friend.slice(0,2).toUpperCase();
+    el("callState").textContent=mode==="video"?"Starting video call…":"Starting voice call…";
+    el("callPlaceholder").classList.toggle("hidden",mode==="video");
+    el("callOverlay").classList.remove("hidden");
+    callSocketSend({type:"call-invite",mode});
+  }catch(error){cleanupCall(false);showToast(error.message)}
+}
+
+async function acceptIncomingCall(){
+  const pending=state.incomingCall;if(!pending)return;
+  el("incomingCallOverlay")?.classList.add("hidden");
+  try{
+    await preparePeer(pending.mode);
+    state.callPeer=pending.username;
+    el("callName").textContent="@"+pending.username;
+    el("callAvatar").textContent=pending.username.slice(0,2).toUpperCase();
+    el("callState").textContent=pending.mode==="video"?"Connecting video…":"Connecting voice…";
+    el("callPlaceholder").classList.toggle("hidden",pending.mode==="video");
+    el("callOverlay").classList.remove("hidden");
+    callSocketSend({type:"call-accept",mode:pending.mode});
+  }catch(error){cleanupCall(false);showToast(error.message)}
+}
+
+async function handleCallSignal(data){
+  try{
+    if(data.type==="call-invite"){
+      state.incomingCall={username:data.username,mode:data.mode||"audio"};
+      el("incomingCallName").textContent="@"+data.username;
+      el("incomingCallMode").textContent=data.mode==="video"?"Incoming video call":"Incoming voice call";
+      el("incomingCallOverlay").classList.remove("hidden");
+      return;
+    }
+    if(data.type==="call-accept" && state.rtc){
+      const offer=await state.rtc.createOffer();
+      await state.rtc.setLocalDescription(offer);
+      callSocketSend({type:"call-offer",sdp:offer});
+      return;
+    }
+    if(data.type==="call-offer"){
+      if(!state.rtc){await preparePeer(data.mode||"audio");}
+      await state.rtc.setRemoteDescription(data.sdp);
+      const answer=await state.rtc.createAnswer();
+      await state.rtc.setLocalDescription(answer);
+      callSocketSend({type:"call-answer",sdp:answer});
+      return;
+    }
+    if(data.type==="call-answer"&&state.rtc){await state.rtc.setRemoteDescription(data.sdp);return}
+    if(data.type==="call-ice"&&state.rtc&&data.candidate){try{await state.rtc.addIceCandidate(data.candidate)}catch{};return}
+    if(data.type==="call-reject"){showToast("Call declined.");cleanupCall(false);return}
+    if(data.type==="call-end"){cleanupCall(false);showToast("Call ended.");return}
+  }catch(error){cleanupCall(false);showToast(error.message)}
 }
 
 function clearReplyTarget(){

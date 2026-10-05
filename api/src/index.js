@@ -998,44 +998,6 @@ export default {
       }
 
 
-      if (url.pathname === "/api/files/upload" && request.method === "POST") {
-        if (!env.CHAT_FILES) return json(request,{error:"File storage is not configured yet."},503);
-        const form=await request.formData();
-        const file=form.get("file");
-        if(!(file instanceof File))return json(request,{error:"Choose a file."},400);
-        if(file.size>20*1024*1024)return json(request,{error:"Maximum file size is 20 MB."},413);
-        const originalName=String(file.name||"file").replace(/[\\/:"*?<>|]+/g,"_").slice(0,120);
-        const ext=(originalName.match(/\.([a-z0-9]{1,8})$/i)||["",""])[1].toLowerCase();
-        const key=user.id+"/"+Date.now()+"-"+randomToken(8)+(ext?"."+ext:"");
-        await env.CHAT_FILES.put(key,file.stream(),{
-          httpMetadata:{contentType:file.type||"application/octet-stream",contentDisposition:'inline; filename="'+originalName.replace(/"/g,"")+"'"}
-        });
-        return json(request,{ok:true,file:{key,name:originalName,size:file.size,type:file.type||"application/octet-stream",url:"/api/files/"+encodeURIComponent(key)}},201);
-      }
-
-      const fileMatch=url.pathname.match(/^\/api\/files\/(.+)$/);
-      if(fileMatch && request.method==="GET"){
-        if(!env.CHAT_FILES)return new Response("File storage unavailable",{status:503,headers:corsHeaders(request)});
-        const key=decodeURIComponent(fileMatch[1]);
-        const object=await env.CHAT_FILES.get(key);
-        if(!object)return new Response("File not found",{status:404,headers:corsHeaders(request)});
-        const headers=new Headers(corsHeaders(request));
-        object.writeHttpMetadata(headers);headers.set("etag",object.httpEtag);
-        return new Response(object.body,{headers});
-      }
-
-
-      if (url.pathname === "/api/search" && request.method === "GET") {
-        const q=cleanProfileText(url.searchParams.get("q"),120);
-        if(!q)return json(request,{users:[],messages:[]});
-        const like="%"+q+"%";
-        const [users,messages] = await Promise.all([
-          env.AJCHAT_DB.prepare("SELECT u.id,u.username,substr(upper(u.username),1,2) AS initials FROM users u WHERE u.username LIKE ? COLLATE NOCASE AND u.id<>? ORDER BY u.username COLLATE NOCASE LIMIT 20").bind(like,user.id).all(),
-          env.AJCHAT_DB.prepare("SELECT m.id,m.body,m.created_at,s.username AS sender FROM messages m JOIN users s ON s.id=m.sender_id WHERE (m.sender_id=? OR m.recipient_id=?) AND m.body LIKE ? COLLATE NOCASE ORDER BY m.id DESC LIMIT 40").bind(user.id,user.id,like).all()
-        ]);
-        return json(request,{users:users.results||[],messages:messages.results||[]});
-      }
-
       const messageSearch = url.pathname.match(/^\/api\/messages\/([^/]+)\/search$/);
       if (messageSearch && request.method === "GET") {
         const username=decodeURIComponent(messageSearch[1]);

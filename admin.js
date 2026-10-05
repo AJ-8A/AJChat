@@ -19,6 +19,14 @@ async function loadDashboard(){
   document.getElementById("messagesStat").textContent=Number(data.stats?.messages||0).toLocaleString();
   document.getElementById("friendshipsStat").textContent=Number(data.stats?.friendships||0).toLocaleString();
   document.getElementById("requestsStat").textContent=Number(data.stats?.pending_requests||0).toLocaleString();
+
+  const onlineUsers=data.online_users||[];
+  document.getElementById("onlineAdminCount").textContent=String(onlineUsers.length);
+  document.getElementById("onlineAdminList").innerHTML=onlineUsers.map(user=>{
+    const initials=esc(String(user.username||"").slice(0,2).toUpperCase());
+    return "<div class='online-user'><span class='online-user-avatar'>"+initials+"</span><div><strong>"+esc(user.username)+"</strong><span>Online now</span></div><i></i></div>";
+  }).join("")||"<div class='online-empty'>No one is online right now.</div>";
+
   document.getElementById("usersTable").innerHTML=(data.recent_users||[]).map(user=>"<tr><td>"+esc(user.username)+"</td><td>"+date(user.created_at)+"</td></tr>").join("")||"<tr><td colspan='2'>No users yet.</td></tr>";
   document.getElementById("requestsTable").innerHTML=(data.recent_requests||[]).map(item=>"<tr><td>"+esc(item.sender)+"</td><td>"+esc(item.receiver)+"</td><td>"+badge(item.status)+"</td><td>"+date(item.created_at)+"</td></tr>").join("")||"<tr><td colspan='4'>No friend requests yet.</td></tr>";
   setDashboardStatus("Updated "+new Date().toLocaleTimeString());

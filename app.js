@@ -649,47 +649,6 @@ async function searchCurrentMessages(){
   catch(error){showToast(error.message)}
 }
 
-function parseAttachmentBody(body){
-  const text=String(body||"");
-  if(!text.startsWith("::file::"))return null;
-  try{return JSON.parse(text.slice(8))}catch{return null}
-}
-function formatBytes(value){
-  const n=Number(value||0);
-  if(!n)return "";
-  if(n<1024)return n+" B";
-  if(n<1048576)return (n/1024).toFixed(1)+" KB";
-  return (n/1048576).toFixed(1)+" MB";
-}
-async function openAttachment(message){
-  const file=parseAttachmentBody(message.body);if(!file?.key)return;
-  try{
-    const response=await fetch(API_BASE+"/api/files/"+encodeURIComponent(file.key),{headers:authHeaders(),cache:"no-store"});
-    if(!response.ok)throw new Error("Unable to open file.");
-    const blob=await response.blob();
-    const url=URL.createObjectURL(blob);window.open(url,"_blank","noopener,noreferrer");
-    setTimeout(()=>URL.revokeObjectURL(url),60000);
-  }catch(error){showToast(error.message)}
-}
-async function uploadAttachment(file){
-  if(!file||(!state.activeFriend&&!state.activeGroup))return;
-  if(file.size>20*1024*1024){showToast("Maximum file size is 20 MB.");return}
-  try{
-    showToast("Uploading "+file.name+"…");
-    const form=new FormData();form.append("file",file);
-    const response=await fetch(API_BASE+"/api/files/upload",{method:"POST",headers:authHeaders(),body:form});
-    let data={};try{data=await response.json()}catch{}
-    if(!response.ok)throw new Error(data.error||"Upload failed.");
-    const body="::file::"+JSON.stringify(data.file);
-    if(state.activeFriend){
-      await api("/api/messages/"+encodeURIComponent(state.activeFriend),{method:"POST",body:JSON.stringify({text:body,reply_to_id:state.replyTo?.id||null})});
-    }else if(state.activeGroup){
-      await api("/api/groups/"+state.activeGroup+"/messages",{method:"POST",body:JSON.stringify({text:body,reply_to_id:state.replyTo?.id||null})});
-    }
-    await reloadActiveChat();clearReplyTarget();showToast("File sent.");
-  }catch(error){showToast(error.message)}
-}
-
 function renderMessages(){
   messagesBox.innerHTML="";
   if(!state.messages.length){messagesBox.innerHTML='<div class="empty-chat"><strong>No messages yet.</strong><span>Say hello — this chat is between real people.</span></div>';return}
@@ -701,10 +660,7 @@ function renderMessages(){
     const counts={};(Array.isArray(message.reactions)?message.reactions:[]).forEach(item=>{counts[item.reaction]=(counts[item.reaction]||0)+1});
     const reactions=Object.entries(counts).map(x=>"<span class='reaction-chip'>"+escapeHTML(x[0])+" "+x[1]+"</span>").join("");
     const quote=reply?"<div class='reply-quote'><strong>"+escapeHTML(reply.sender||"")+"</strong><span>"+escapeHTML(String(reply.body||"").slice(0,100))+"</span></div>":"";
-    const attachment=parseAttachmentBody(message.body);
-    const body=deleted?"This message was deleted.":attachment
-      ? "<button type='button' class='attachment-card' data-action='attachment'><span class='attachment-icon'>📎</span><span><strong>"+escapeHTML(attachment.name||"Attachment")+"</strong><small>"+escapeHTML(formatBytes(attachment.size))+"</small></span></button>"
-      : escapeHTML(message.body||"");
+    const body=deleted?"This message was deleted.":escapeHTML(message.body||"");
     const status=mine?(message.is_read?"✓✓":"✓"):"";
     row.innerHTML="<article class='message'>"+quote+"<div class='message-text"+(deleted?" deleted":"")+"'>"+body+"</div>"+(reactions?"<div class='reaction-row'>"+reactions+"</div>":"")+"<div class='message-meta'><time>"+formatTime(message.created_at)+(message.edited_at&&!deleted?" · edited":"")+(message.pinned?" · pinned":"")+"</time>"+(mine?"<span class='message-status'>"+status+"</span>":"")+"</div><div class='message-tools'><button type='button' data-action='reply'>↩</button><button type='button' data-action='react' data-reaction='❤️'>❤️</button><button type='button' data-action='react' data-reaction='👍'>👍</button><button type='button' data-action='react' data-reaction='🔥'>🔥</button><button type='button' data-action='pin'>📌</button>"+(mine&&!deleted?"<button type='button' data-action='edit'>✏</button><button type='button' data-action='delete'>🗑</button>":"")+"</div></article>";
     messagesBox.appendChild(row);
@@ -938,7 +894,6 @@ document.getElementById("messages")?.addEventListener("click",async event=>{
   const b=event.target.closest("button[data-action]");if(!b)return;const row=b.closest(".message-row");if(!row)return;
   const m=state.messages.find(x=>String(x.id)===row.dataset.messageId);if(!m)return;
   const a=b.dataset.action;
-  if(a==="attachment"){await openAttachment(m);return}
   if(a==="reply"){setReplyTarget(m);return}
   if(a==="react"){await messageAction(m,"react",{reaction:b.dataset.reaction});return}
   if(a==="pin"){await messageAction(m,"pin");return}
@@ -1015,10 +970,7 @@ input.addEventListener("blur",()=>{
   sendTypingState(false);
 });
 
-el("attachButton").addEventListener("click",()=>el("fileInput")?.click());
-el("fileInput")?.addEventListener("change",async event=>{
-  const file=event.target.files?.[0];event.target.value="";if(file)await uploadAttachment(file);
-});
+el("attachButton")?.addEventListener("click",()=>showToast("Text chat only — no file storage enabled."));
 document.querySelectorAll(".filter-pill").forEach(button=>{
   button.addEventListener("click",()=>{
     document.querySelectorAll(".filter-pill").forEach(item=>item.classList.remove("active"));

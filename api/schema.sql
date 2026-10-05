@@ -140,3 +140,12 @@ CREATE TABLE IF NOT EXISTS group_read_state (
   FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS user_controls (
+  user_id INTEGER PRIMARY KEY,
+  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','admin')),
+  suspended_until INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_user_controls_suspended ON user_controls(suspended_until);

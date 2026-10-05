@@ -781,6 +781,18 @@ export class ChatRoom extends DurableObject {
     let data;
     try { data = JSON.parse(message); } catch { return; }
 
+    if (data?.type === "typing") {
+      const typingPayload = JSON.stringify({
+        type: "typing",
+        username: attachment.username,
+        typing: Boolean(data.typing)
+      });
+      for (const socket of this.ctx.getWebSockets()) {
+        if (socket !== ws && socket.readyState === WebSocket.OPEN) socket.send(typingPayload);
+      }
+      return;
+    }
+
     if (data?.type !== "message") return;
 
     const body = cleanMessage(data.text);

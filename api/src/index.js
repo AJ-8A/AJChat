@@ -7,7 +7,7 @@ function corsHeaders(request) {
   const allowed = origin === "https://aj-8a.github.io" || origin.startsWith("http://localhost:");
   return {
     "Access-Control-Allow-Origin": allowed ? origin : "https://aj-8a.github.io",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Cache-Control": "no-store"
   };
@@ -101,6 +101,23 @@ function initials(username) {
   return String(username || "").slice(0, 2).toUpperCase();
 }
 
+async function isBlocked(db, a, b) {
+  return Boolean(await db.prepare("SELECT 1 FROM blocks WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)").bind(a, b, b, a).first());
+}
+
+function parseReactions(value) {
+  try { const parsed = JSON.parse(String(value || "[]")); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
+}
+
+function cleanProfileText(value, max) {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+async function ensureProfile(db, userId) {
+  await db.prepare("INSERT OR IGNORE INTO profiles (user_id) VALUES (?)").bind(userId).run();
+  return db.prepare("SELECT user_id, bio, status, avatar, updated_at FROM profiles WHERE user_id = ?").bind(userId).first();
+}
+
 function adminAuthorized(request, env) {
   const configured = typeof env.ADMIN_TOKEN === "string" ? env.ADMIN_TOKEN : "";
   const header = request.headers.get("Authorization") || "";
@@ -137,11 +154,13 @@ export default {
           return json(request, { error: "Unauthorized" }, 401);
         }
 
-        const [users, messages, friendships, pendingRequests, recentUsers, recentRequests, onlineUsers] = await Promise.all([
+        const [users, messages, friendships, pendingRequests, messagesToday, usersToday, recentUsers, recentRequests, onlineUsers] = await Promise.all([
           env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM users").first(),
           env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM messages").first(),
           env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM friendships").first(),
           env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM friend_requests WHERE status = 'pending'").first(),
+          env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM messages WHERE created_at >= unixepoch('now','start of day')").first(),
+          env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM users WHERE created_at >= unixepoch('now','start of day')").first(),
           env.AJCHAT_DB.prepare("SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 20").all(),
           env.AJCHAT_DB.prepare("SELECT r.id, r.status, r.created_at, sender.username AS sender, receiver.username AS receiver FROM friend_requests r JOIN users sender ON sender.id = r.sender_id JOIN users receiver ON receiver.id = r.receiver_id ORDER BY r.id DESC LIMIT 20").all(),
           env.AJCHAT_DB.prepare("SELECT u.id, u.username, p.last_seen FROM user_presence p JOIN users u ON u.id = p.user_id WHERE p.last_seen >= unixepoch() - 45 ORDER BY p.last_seen DESC, u.username COLLATE NOCASE").all()
@@ -152,7 +171,9 @@ export default {
             users: Number(users?.count || 0),
             messages: Number(messages?.count || 0),
             friendships: Number(friendships?.count || 0),
-            pending_requests: Number(pendingRequests?.count || 0)
+            pending_requests: Number(pendingRequests?.count || 0),
+            messages_today: Number(messagesToday?.count || 0),
+            users_today: Number(usersToday?.count || 0)
           },
           recent_users: recentUsers.results || [],
           recent_requests: recentRequests.results || [],

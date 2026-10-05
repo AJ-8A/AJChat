@@ -651,7 +651,7 @@ async function sendMessage(){
   try{
     const data=await api("/api/messages/"+encodeURIComponent(friend),{
       method:"POST",
-      body:JSON.stringify({text})
+      body:JSON.stringify({text,reply_to_id:state.replyTo?.id||null})
     });
 
     if(data.message && !state.messages.some(m=>String(m.id)===String(data.message.id))){
@@ -747,6 +747,25 @@ el("closeProfileButton")?.addEventListener("click",closeProfile);
 el("saveProfileButton")?.addEventListener("click",saveProfile);
 el("chatAvatar")?.addEventListener("click",()=>openProfile(state.activeFriend||state.me?.username,!state.activeFriend));
 el("chatMoreButton")?.addEventListener("click",async()=>{
+  if(state.activeGroup){
+    const choice=prompt("Group options:\n1 = View members\n2 = Add friend\n3 = Rename group\n4 = Leave group");
+    try{
+      if(choice==="1"){
+        const data=await api("/api/groups/"+state.activeGroup);
+        const names=(data.group?.members||[]).map(member=>"@"+member.username+(Number(member.online)?" • online":"")).join("\n");
+        showToast(names||"No members.");
+      }else if(choice==="2"){
+        const username=prompt("Friend username to add:");
+        if(username){await api("/api/groups/"+state.activeGroup+"/members",{method:"POST",body:JSON.stringify({username})});await loadGroups();await selectGroup(state.activeGroup);showToast("Member added.");}
+      }else if(choice==="3"){
+        const name=prompt("New group name:");
+        if(name){await api("/api/groups/"+state.activeGroup,{method:"PATCH",body:JSON.stringify({name}));await loadGroups();await selectGroup(state.activeGroup);}
+      }else if(choice==="4"&&confirm("Leave this group?")){
+        const id=state.activeGroup;await api("/api/groups/"+id,{method:"DELETE"});state.activeGroup=null;await loadGroups();renderFriendList();renderEmptyFriends();
+      }
+    }catch(error){showToast(error.message)}
+    return;
+  }
   if(state.activeFriend){const c=prompt("Chat options:\n1 = View profile\n2 = Block user\n3 = Search messages");if(c==="1")await openProfile(state.activeFriend,false);else if(c==="2"&&confirm("Block @"+state.activeFriend+"?")){await api("/api/blocks",{method:"POST",body:JSON.stringify({username:state.activeFriend})});state.activeFriend=null;await loadFriends();renderEmptyFriends()}else if(c==="3")await searchCurrentMessages()}
   else await openProfile(state.me?.username,true);
 });

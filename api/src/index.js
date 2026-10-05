@@ -137,13 +137,14 @@ export default {
           return json(request, { error: "Unauthorized" }, 401);
         }
 
-        const [users, messages, friendships, pendingRequests, recentUsers, recentRequests] = await Promise.all([
+        const [users, messages, friendships, pendingRequests, recentUsers, recentRequests, onlineUsers] = await Promise.all([
           env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM users").first(),
           env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM messages").first(),
           env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM friendships").first(),
           env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM friend_requests WHERE status = 'pending'").first(),
           env.AJCHAT_DB.prepare("SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 20").all(),
-          env.AJCHAT_DB.prepare("SELECT r.id, r.status, r.created_at, sender.username AS sender, receiver.username AS receiver FROM friend_requests r JOIN users sender ON sender.id = r.sender_id JOIN users receiver ON receiver.id = r.receiver_id ORDER BY r.id DESC LIMIT 20").all()
+          env.AJCHAT_DB.prepare("SELECT r.id, r.status, r.created_at, sender.username AS sender, receiver.username AS receiver FROM friend_requests r JOIN users sender ON sender.id = r.sender_id JOIN users receiver ON receiver.id = r.receiver_id ORDER BY r.id DESC LIMIT 20").all(),
+          env.AJCHAT_DB.prepare("SELECT u.id, u.username, p.last_seen FROM user_presence p JOIN users u ON u.id = p.user_id WHERE p.last_seen >= unixepoch() - 45 ORDER BY p.last_seen DESC, u.username COLLATE NOCASE").all()
         ]);
 
         return json(request, {
@@ -154,7 +155,12 @@ export default {
             pending_requests: Number(pendingRequests?.count || 0)
           },
           recent_users: recentUsers.results || [],
-          recent_requests: recentRequests.results || []
+          recent_requests: recentRequests.results || [],
+          online_users: (onlineUsers.results || []).map(user => ({
+            id: Number(user.id),
+            username: user.username,
+            last_seen: Number(user.last_seen || 0)
+          }))
         });
       }
       if (url.pathname === "/api/admin/friend" && request.method === "POST") {

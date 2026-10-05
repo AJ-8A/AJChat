@@ -28,7 +28,8 @@ const state = {
   callPeer: null,
   callTimer: null,
   callStartedAt: 0,
-  incomingCall: null
+  incomingCall: null,
+  notificationRegistration: null
 };
 
 const el = id => document.getElementById(id);
@@ -127,6 +128,7 @@ async function submitAuth(event){
   }
 }
 
+registerNotifications();
 async function boot(){
   renderAuthMode();
   el("authForm").addEventListener("submit",submitAuth);
@@ -596,19 +598,36 @@ async function messageAction(message,action,payload={}){
     await reloadActiveChat();
   }catch(error){showToast(error.message)}
 }
-function notifyIncoming(message){
+async function registerNotifications(){
+  if(!("serviceWorker" in navigator))return null;
+  try{state.notificationRegistration=await navigator.serviceWorker.register("./sw.js",{scope:"./"});return state.notificationRegistration}catch{return null}
+}
+async function notifyIncoming(message){
   if(!state.notifications || !message || message.sender===state.me?.username) return;
   if(!("Notification" in window) || Notification.permission!=="granted") return;
   if(document.visibilityState==="visible" && (state.activeFriend===message.sender || state.activeGroup)) return;
-  try{new Notification("AJChat • "+(message.sender||"New message"),{body:String(message.body||"").slice(0,120),tag:"ajchat-"+String(message.id)})}catch{}
+  try{
+    const registration=state.notificationRegistration||(await navigator.serviceWorker?.ready);
+    if(registration?.showNotification){
+      await registration.showNotification("AJChat • "+(message.sender||"New message"),{
+        body:String(message.body||"").slice(0,120),
+        tag:"ajchat-"+String(message.id),
+        icon:"./icon.svg",
+        badge:"./icon.svg",
+        data:{url:"./"}
+      });
+      if(navigator.setAppBadge) navigator.setAppBadge(1).catch(()=>{});
+    }
+  }catch{}
 }
 async function ensureNotifications(){
-  if(!("Notification" in window)){showToast("Browser notifications are not supported.");return}
+  if(!("Notification" in window)){showToast("This phone/browser does not support notifications.");return}
   if(Notification.permission==="denied"){showToast("Notifications are blocked in browser settings.");return}
+  await registerNotifications();
   const p=Notification.permission==="granted"?"granted":await Notification.requestPermission();
   state.notifications=p==="granted";localStorage.setItem("ajchat_notifications",state.notifications?"on":"off");
   if(el("notifyButton"))el("notifyButton").textContent=state.notifications?"♢":"○";
-  showToast(state.notifications?"Notifications enabled.":"Notifications disabled.");
+  showToast(state.notifications?"Phone notifications enabled.":"Notifications disabled.");
 }
 async function openProfile(username,editable){
   try{

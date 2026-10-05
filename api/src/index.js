@@ -702,18 +702,23 @@ export default {
         const body = await bodyJson(request);
         const messageBody = cleanMessage(body.text);
         if (!messageBody) return json(request, { error: "Message cannot be empty." }, 400);
+        const replyToId = Number(body.reply_to_id || 0) || null;
 
         const room = roomFor(user.id, friend.id);
         const inserted = await env.AJCHAT_DB
           .prepare("INSERT INTO messages (room_id, sender_id, recipient_id, body) VALUES (?, ?, ?, ?)")
           .bind(room, user.id, friend.id, messageBody)
           .run();
+        const id = Number(inserted.meta?.last_row_id || 0);
+        await env.AJCHAT_DB.prepare("INSERT INTO message_meta (message_id, reply_to_id) VALUES (?, ?)").bind(id, replyToId).run();
 
         const message = {
-          id: Number(inserted.meta?.last_row_id || 0),
+          id,
           body: messageBody,
           created_at: Math.floor(Date.now() / 1000),
-          sender: user.username
+          sender: user.username,
+          reply_to_id: replyToId,
+          reactions: []
         };
 
         return json(request, { message }, 201);
@@ -733,17 +738,30 @@ export default {
         const room = roomFor(user.id, friend.id);
         const rows = await env.AJCHAT_DB
           .prepare(`
-            SELECT m.id, m.body, m.created_at, sender.username AS sender
+            SELECT m.id, m.body, m.created_at, sender.username AS sender,
+                   mm.reply_to_id, mm.edited_at, mm.deleted_at, mm.pinned, mm.reactions_json,
+                   CASE
+                     WHEN m.sender_id = ? AND m.id <= COALESCE((
+                       SELECT last_read_message_id FROM friend_read_state
+                       WHERE user_id = ? AND friend_id = ?
+                     ),0) THEN 1 ELSE 0
+                   END AS is_read
             FROM messages m
             JOIN users sender ON sender.id = m.sender_id
+            LEFT JOIN message_meta mm ON mm.message_id = m.id
             WHERE m.room_id = ?
             ORDER BY m.id DESC
             LIMIT 100
           `)
-          .bind(room)
+          .bind(user.id, friend.id, user.id, room)
           .all();
 
-        return json(request, { messages: (rows.results || []).reverse() });
+        return json(request, { messages: (rows.results || []).reverse().map(message => ({
+          ...message,
+          reactions: parseReactions(message.reactions_json),
+          pinned: Boolean(Number(message.pinned || 0)),
+          is_read: Boolean(Number(message.is_read || 0))
+        })) });
       }
 
       const profileMatch = url.pathname.match(/^\/api\/profile(?:\/([^/]+))?$/);

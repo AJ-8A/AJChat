@@ -545,6 +545,35 @@ export default {
         }, 201);
       }
 
+      const groupMessageControl = url.pathname.match(/^\/api\/groups\/(\d+)\/messages\/(\d+)\/(edit|delete|react|pin)$/);
+      if (groupMessageControl && request.method === "POST") {
+        const groupId=Number(groupMessageControl[1]), messageId=Number(groupMessageControl[2]), action=groupMessageControl[3];
+        const member=await env.AJCHAT_DB.prepare("SELECT 1 FROM group_members WHERE group_id=? AND user_id=?").bind(groupId,user.id).first();
+        if(!member)return json(request,{error:"Group not found."},404);
+        const message=await env.AJCHAT_DB.prepare("SELECT id,sender_id FROM messages WHERE id=? AND room_id=?").bind(messageId,"group:"+groupId).first();
+        if(!message)return json(request,{error:"Message not found."},404);
+        if(action!=="react"&&Number(message.sender_id)!==Number(user.id))return json(request,{error:"Only the sender can change this message."},403);
+        if(action==="edit"){
+          const body=await bodyJson(request);const next=cleanMessage(body.text);if(!next)return json(request,{error:"Message cannot be empty."},400);
+          await env.AJCHAT_DB.prepare("UPDATE messages SET body=? WHERE id=?").bind(next,messageId).run();
+          await env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO message_meta(message_id) VALUES(?)").bind(messageId).run();
+          await env.AJCHAT_DB.prepare("UPDATE message_meta SET edited_at=unixepoch(),deleted_at=NULL WHERE message_id=?").bind(messageId).run();
+        }else if(action==="delete"){
+          await env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO message_meta(message_id) VALUES(?)").bind(messageId).run();
+          await env.AJCHAT_DB.prepare("UPDATE message_meta SET deleted_at=unixepoch() WHERE message_id=?").bind(messageId).run();
+        }else if(action==="pin"){
+          await env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO message_meta(message_id) VALUES(?)").bind(messageId).run();
+          await env.AJCHAT_DB.prepare("UPDATE message_meta SET pinned=CASE WHEN pinned=1 THEN 0 ELSE 1 END WHERE message_id=?").bind(messageId).run();
+        }else{
+          const body=await bodyJson(request);const reaction=["❤️","😂","👍","🔥","😮","😢"].includes(body.reaction)?body.reaction:"";if(!reaction)return json(request,{error:"Unsupported reaction."},400);
+          const meta=await env.AJCHAT_DB.prepare("SELECT reactions_json FROM message_meta WHERE message_id=?").bind(messageId).first();
+          const reactions=parseReactions(meta?.reactions_json);const mine=reactions.findIndex(x=>Number(x.user_id)===Number(user.id)&&x.reaction===reaction);
+          const next=mine>=0?reactions.filter((_,i)=>i!==mine):reactions.filter(x=>Number(x.user_id)!==Number(user.id)).concat([{user_id:Number(user.id),username:user.username,reaction}]);
+          await env.AJCHAT_DB.prepare("INSERT OR REPLACE INTO message_meta(message_id,reactions_json) VALUES(?,?)").bind(messageId,JSON.stringify(next)).run();
+          return json(request,{ok:true,reactions:next});
+        }
+        return json(request,{ok:true});
+      }
       const groupMessageMatch = url.pathname.match(/^\/api\/groups\/(\d+)\/messages$/);
       if (groupMessageMatch && (request.method === "GET" || request.method === "POST")) {
         const groupId = Number(groupMessageMatch[1]);

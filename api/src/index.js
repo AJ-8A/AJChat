@@ -1078,6 +1078,17 @@ export class ChatRoom extends DurableObject {
       return;
     }
 
+    if (["call-invite","call-accept","call-offer","call-answer","call-ice","call-end","call-reject"].includes(data?.type)) {
+      const relay = { type: data.type, username: attachment.username };
+      if (data.mode) relay.mode = data.mode;
+      if (data.sdp) relay.sdp = data.sdp;
+      if (data.candidate) relay.candidate = data.candidate;
+      for (const socket of this.ctx.getWebSockets()) {
+        if (socket !== ws && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(relay));
+      }
+      return;
+    }
+
     if (data?.type !== "message") return;
 
     const body = cleanMessage(data.text);

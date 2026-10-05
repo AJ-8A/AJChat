@@ -436,6 +436,7 @@ async function selectGroup(groupId){
     const data=await api("/api/groups/"+group.id+"/messages");
     state.messages=data.messages||[];
     renderMessages();
+    api("/api/groups/"+group.id+"/read",{method:"POST",body:"{}"}).catch(()=>{});
     startGroupPolling();
   }catch(error){
     showToast(error.message);
@@ -459,8 +460,10 @@ async function reloadActiveChat(){
 }
 async function messageAction(message,action,payload={}){
   try{
-    if(!state.activeFriend){showToast("Message tools are available in direct chats.");return}
-    await api("/api/messages/"+encodeURIComponent(state.activeFriend)+"/"+message.id+"/"+action,{method:"POST",body:JSON.stringify(payload)});
+    const endpoint=state.activeFriend
+      ? "/api/messages/"+encodeURIComponent(state.activeFriend)+"/"+message.id+"/"+action
+      : "/api/groups/"+state.activeGroup+"/messages/"+message.id+"/"+action;
+    await api(endpoint,{method:"POST",body:JSON.stringify(payload)});
     await reloadActiveChat();
   }catch(error){showToast(error.message)}
 }

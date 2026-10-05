@@ -6,6 +6,7 @@ const loginForm=document.getElementById("adminForm");
 const tokenInput=document.getElementById("adminToken");
 const loginStatus=document.getElementById("loginStatus");
 const dashboardStatus=document.getElementById("dashboardStatus");
+let dashboardTimer=null;
 
 function setLoginStatus(text,error=false){loginStatus.textContent=text||"";loginStatus.className="status"+(error?" error":"")}
 function setDashboardStatus(text,error=false){dashboardStatus.textContent=text||"";dashboardStatus.className="dashboard-status"+(error?" error":"")}
@@ -17,6 +18,8 @@ async function loadDashboard(){
   if(!response.ok)throw new Error(data.error||"Dashboard request failed.");
   document.getElementById("usersStat").textContent=Number(data.stats?.users||0).toLocaleString();
   document.getElementById("messagesStat").textContent=Number(data.stats?.messages||0).toLocaleString();
+  document.getElementById("messagesTodayStat").textContent=Number(data.stats?.messages_today||0).toLocaleString();
+  document.getElementById("usersTodayStat").textContent=Number(data.stats?.users_today||0).toLocaleString();
   document.getElementById("friendshipsStat").textContent=Number(data.stats?.friendships||0).toLocaleString();
   document.getElementById("requestsStat").textContent=Number(data.stats?.pending_requests||0).toLocaleString();
 
@@ -69,8 +72,16 @@ async function makeFriends(event){
 function badge(status){const safe=esc(status||"unknown");return "<span class='badge "+safe+"'>"+safe+"</span>"}
 function date(seconds){if(!seconds)return"—";return new Date(Number(seconds)*1000).toLocaleString([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}
 function esc(value){return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function showDashboard(){loginCard.classList.add("hidden");dashboard.classList.remove("hidden");loadDashboard().catch(e=>setDashboardStatus(e.message,true))}
-function showLogin(message=""){dashboard.classList.add("hidden");loginCard.classList.remove("hidden");setLoginStatus(message,Boolean(message))}
+function showDashboard(){
+  loginCard.classList.add("hidden");dashboard.classList.remove("hidden");
+  loadDashboard().catch(e=>setDashboardStatus(e.message,true));
+  clearInterval(dashboardTimer);
+  dashboardTimer=setInterval(()=>loadDashboard().catch(()=>{}),5000);
+}
+function showLogin(message=""){
+  clearInterval(dashboardTimer);dashboardTimer=null;
+  dashboard.classList.add("hidden");loginCard.classList.remove("hidden");setLoginStatus(message,Boolean(message))
+}
 loginForm.addEventListener("submit",async event=>{
   event.preventDefault();
   const token=tokenInput.value.trim();if(!token)return;

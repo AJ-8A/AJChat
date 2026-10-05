@@ -467,6 +467,12 @@ async function messageAction(message,action,payload={}){
     await reloadActiveChat();
   }catch(error){showToast(error.message)}
 }
+function notifyIncoming(message){
+  if(!state.notifications || !message || message.sender===state.me?.username) return;
+  if(!("Notification" in window) || Notification.permission!=="granted") return;
+  if(document.visibilityState==="visible" && (state.activeFriend===message.sender || state.activeGroup)) return;
+  try{new Notification("AJChat • "+(message.sender||"New message"),{body:String(message.body||"").slice(0,120),tag:"ajchat-"+String(message.id)})}catch{}
+}
 async function ensureNotifications(){
   if(!("Notification" in window)){showToast("Browser notifications are not supported.");return}
   if(Notification.permission==="denied"){showToast("Notifications are blocked in browser settings.");return}
@@ -563,7 +569,10 @@ function startPolling(){
       const known=new Set(state.messages.map(m=>String(m.id)));
       let changed=false;
       for(const message of incoming){
-        if(!known.has(String(message.id))){ state.messages.push(message); changed=true; }
+        if(!known.has(String(message.id))){
+          state.messages.push(message); changed=true;
+          notifyIncoming(message);
+        }
       }
       if(changed){
         state.messages=state.messages.slice(-100);
@@ -600,6 +609,7 @@ function connectSocket(retry=0){
         if(!state.messages.some(m=>String(m.id)===String(data.message.id))){
           state.messages.push(data.message);
           renderMessages();
+          notifyIncoming(data.message);
         }
       }
       if(data.type==="ready"){

@@ -299,12 +299,15 @@ export default {
         const password = typeof body.password === "string" ? body.password : "";
 
         const user = await env.AJCHAT_DB
-          .prepare("SELECT id, username, password_hash FROM users WHERE username = ? COLLATE NOCASE")
+          .prepare("SELECT u.id, u.username, u.password_hash, COALESCE(uc.suspended_until,0) AS suspended_until FROM users u LEFT JOIN user_controls uc ON uc.user_id=u.id WHERE u.username = ? COLLATE NOCASE")
           .bind(username)
           .first();
 
         if (!user || !(await verifyPassword(password, user.password_hash))) {
           return json(request, { error: "Incorrect username or password." }, 401);
+        }
+        if (Number(user.suspended_until || 0) > Math.floor(Date.now()/1000)) {
+          return json(request, { error: "This account is temporarily suspended." }, 403);
         }
 
         const token = randomToken();

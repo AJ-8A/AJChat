@@ -1027,9 +1027,27 @@ document.querySelectorAll(".filter-pill").forEach(button=>{
     renderFriendList();
   });
 });
+async function runGlobalSearch(query){
+  const panel=el("globalSearchResults");if(!panel)return;
+  if(query.length<2){panel.classList.add("hidden");panel.innerHTML="";return}
+  try{
+    const data=await api("/api/search?q="+encodeURIComponent(query));
+    const users=(data.users||[]).slice(0,8);
+    const messages=(data.messages||[]).slice(0,10);
+    panel.innerHTML="<div class='global-search-head'><strong>Search results</strong><button type='button' id='closeGlobalSearch'>×</button></div>"+
+      (users.length?"<div class='global-section-title'>People</div>"+users.map(user=>"<button type='button' class='global-result' data-username='"+escapeHTML(user.username)+"'><span class='avatar'>"+escapeHTML(user.initials||user.username.slice(0,2).toUpperCase())+"</span><span><strong>@"+escapeHTML(user.username)+"</strong><small>AJChat user</small></span></button>").join(""):"")+
+      (messages.length?"<div class='global-section-title'>Messages</div>"+messages.map(item=>"<button type='button' class='global-result message-result' data-message-id='"+item.id+"' data-sender='"+escapeHTML(item.sender)+"'><span class='avatar'>⌕</span><span><strong>@"+escapeHTML(item.sender)+"</strong><small>"+escapeHTML(String(item.body||"").slice(0,90))+"</small></span></button>").join(""):"")+
+      (!users.length&&!messages.length?"<div class='global-empty'>Nothing found.</div>":"");
+    panel.classList.remove("hidden");
+    el("closeGlobalSearch")?.addEventListener("click",()=>{panel.classList.add("hidden");panel.innerHTML=""});
+    panel.querySelectorAll("[data-username]").forEach(button=>button.addEventListener("click",async()=>{await selectFriend(button.dataset.username);panel.classList.add("hidden");el("chatSearch").value="";}));
+  }catch{}
+}
+
 el("chatSearch").addEventListener("input",event=>{
   const q=event.target.value.trim().toLowerCase();
-  document.querySelectorAll(".chat-item").forEach(item=>item.classList.toggle("hidden",!item.textContent.toLowerCase().includes(q)));
+  document.querySelectorAll(".chat-item").forEach(item=>item.classList.toggle("hidden",!q||item.textContent.toLowerCase().includes(q)));
+  if(q.length>=2)runGlobalSearch(q);else{el("globalSearchResults")?.classList.add("hidden");}
 });
 document.addEventListener("keydown",event=>{
   if(event.key==="/" && document.activeElement.tagName!=="INPUT"){event.preventDefault();el("chatSearch").focus()}

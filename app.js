@@ -385,6 +385,7 @@ async function selectGroup(groupId){
   if(state.socket){try{state.socket.close()}catch{} state.socket=null;}
   state.activeFriend=null;
   state.activeGroup=Number(groupId);
+  renderTyping(false);
   renderFriendList();
 
   const group=state.groups.find(g=>Number(g.id)===Number(groupId));

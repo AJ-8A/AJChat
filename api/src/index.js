@@ -500,6 +500,59 @@ export default {
         });
       }
 
+
+      const groupControlMatch = url.pathname.match(/^\/api\/groups\/(\d+)(?:\/members(?:\/([^/]+))?)?$/);
+      if (groupControlMatch && (request.method === "GET" || request.method === "PATCH" || request.method === "POST" || request.method === "DELETE")) {
+        const groupId = Number(groupControlMatch[1]);
+        const memberUsername = groupControlMatch[2] ? decodeURIComponent(groupControlMatch[2]) : "";
+        const group = await env.AJCHAT_DB.prepare("SELECT id,name,owner_id FROM groups WHERE id=?").bind(groupId).first();
+        if(!group)return json(request,{error:"Group not found."},404);
+        const membership = await env.AJCHAT_DB.prepare("SELECT 1 FROM group_members WHERE group_id=? AND user_id=?").bind(groupId,user.id).first();
+        if(!membership)return json(request,{error:"You are not a member of this group."},403);
+
+        if(request.method==="GET" && !memberUsername){
+          const members = await env.AJCHAT_DB.prepare("SELECT u.id,u.username,substr(upper(u.username),1,2) AS initials,CASE WHEN COALESCE(p.last_seen,0)>=unixepoch()-45 THEN 1 ELSE 0 END AS online FROM group_members gm JOIN users u ON u.id=gm.user_id LEFT JOIN user_presence p ON p.user_id=u.id WHERE gm.group_id=? ORDER BY CASE WHEN u.id=? THEN 0 ELSE 1 END,u.username COLLATE NOCASE").bind(groupId,user.id).all();
+          return json(request,{group:{...group,id:Number(group.id),members:members.results||[]}});
+        }
+
+        if(request.method==="PATCH"){
+          if(Number(group.owner_id)!==Number(user.id))return json(request,{error:"Only the group owner can rename the group."},403);
+          const body=await bodyJson(request);const name=typeof body.name==="string"?body.name.trim().slice(0,40):"";
+          if(name.length<2)return json(request,{error:"Group name must be at least 2 characters."},400);
+          await env.AJCHAT_DB.prepare("UPDATE groups SET name=? WHERE id=?").bind(name,groupId).run();
+          return json(request,{ok:true,name});
+        }
+
+        if(request.method==="POST"){
+          if(Number(group.owner_id)!==Number(user.id))return json(request,{error:"Only the group owner can add members."},403);
+          const body=await bodyJson(request);const username=cleanUsername(body.username);
+          const target=await env.AJCHAT_DB.prepare("SELECT id,username FROM users WHERE username=? COLLATE NOCASE").bind(username).first();
+          if(!target)return json(request,{error:"User not found."},404);
+          if(!(await isFriend(env.AJCHAT_DB,user.id,target.id)))return json(request,{error:"You must be friends before adding this user."},403);
+          await env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO group_members(group_id,user_id) VALUES(?,?)").bind(groupId,target.id).run();
+          return json(request,{ok:true,username:target.username});
+        }
+
+        if(request.method==="DELETE"){
+          if(memberUsername){
+            if(Number(group.owner_id)!==Number(user.id))return json(request,{error:"Only the group owner can remove members."},403);
+            const target=await env.AJCHAT_DB.prepare("SELECT id FROM users WHERE username=? COLLATE NOCASE").bind(memberUsername).first();
+            if(!target)return json(request,{error:"User not found."},404);
+            await env.AJCHAT_DB.prepare("DELETE FROM group_members WHERE group_id=? AND user_id=?").bind(groupId,target.id).run();
+            return json(request,{ok:true,removed:true});
+          }
+          const others=await env.AJCHAT_DB.prepare("SELECT user_id FROM group_members WHERE group_id=? AND user_id<>? ORDER BY joined_at LIMIT 1").bind(groupId,user.id).first();
+          if(Number(group.owner_id)===Number(user.id) && others){
+            await env.AJCHAT_DB.prepare("UPDATE groups SET owner_id=? WHERE id=?").bind(others.user_id,groupId).run();
+          }else if(Number(group.owner_id)===Number(user.id) && !others){
+            await env.AJCHAT_DB.prepare("DELETE FROM groups WHERE id=?").bind(groupId).run();
+            return json(request,{ok:true,deleted:true});
+          }
+          await env.AJCHAT_DB.prepare("DELETE FROM group_members WHERE group_id=? AND user_id=?").bind(groupId,user.id).run();
+          return json(request,{ok:true,left:true});
+        }
+      }
+
       if (url.pathname === "/api/groups" && request.method === "POST") {
         const body = await bodyJson(request);
         const name = typeof body.name === "string" ? body.name.trim().slice(0, 40) : "";

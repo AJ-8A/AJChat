@@ -18,7 +18,8 @@ const state = {
   outgoingRequests: [],
   presenceTimer: null,
   friendRefreshTimer: null,
-  friendRequestTimer: null
+  friendRequestTimer: null,
+  typingTimer: null
 };
 
 const el = id => document.getElementById(id);
@@ -325,6 +326,26 @@ function renderEmptyFriends(){
   messagesBox.innerHTML='<div class="empty-chat"><strong>Your chat is waiting.</strong><span>Add a friend and they can message you from their own device.</span></div>';
 }
 
+function renderTyping(show, username=state.activeFriend){
+  const row=el("typingRow");
+  const avatar=el("typingRow")?.querySelector(".typing-avatar");
+  if(!row)return;
+  row.classList.toggle("hidden",!show);
+  if(show){
+    if(avatar)avatar.textContent=(username||"??").slice(0,2).toUpperCase();
+    el("chatStatus").textContent=(username||"Friend")+" is typing…";
+  }else if(state.activeFriend){
+    const active=state.friends.find(f=>f.username===state.activeFriend);
+    if(active)el("chatStatus").textContent=active.online?"Online now":"Offline — messages will be saved";
+  }
+}
+
+function sendTypingState(typing){
+  if(state.socket && state.socket.readyState===WebSocket.OPEN && state.activeFriend){
+    try{state.socket.send(JSON.stringify({type:"typing",typing:Boolean(typing)}))}catch{}
+  }
+}
+
 function formatTime(value){
   if(!value)return "";
   return new Date(Number(value)*1000).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});
@@ -336,6 +357,7 @@ async function selectFriend(username){
   if(state.socket){try{state.socket.close()}catch{}}
   state.activeGroup=null;
   state.activeFriend=username;
+  renderTyping(false, username);
   renderFriendList();
   const friend=state.friends.find(f=>f.username===username);
   el("chatAvatar").textContent=(friend?.initials||username.slice(0,2)).toUpperCase();
@@ -461,7 +483,11 @@ function connectSocket(retry=0){
     if(state.socket!==socket || state.activeFriend!==expectedFriend) return;
     try{
       const data=JSON.parse(event.data);
+      if(data.type==="typing"){
+        renderTyping(Boolean(data.typing), data.username || expectedFriend);
+      }
       if(data.type==="message" && data.message){
+        renderTyping(false, expectedFriend);
         if(!state.messages.some(m=>String(m.id)===String(data.message.id))){
           state.messages.push(data.message);
           renderMessages();
@@ -482,6 +508,7 @@ function connectSocket(retry=0){
   socket.onclose=(event)=>{
     if(state.socket!==socket || state.activeFriend!==expectedFriend) return;
     state.socket=null;
+    renderTyping(false, expectedFriend);
     if(document.visibilityState==="hidden") return;
     startPolling();
     el("chatStatus").textContent="Offline — messages will be saved";
@@ -501,6 +528,9 @@ function connectSocket(retry=0){
 async function sendMessage(){
   const text=input.value.trim();
   if(!text || (!state.activeFriend && !state.activeGroup))return;
+  clearTimeout(state.typingTimer);
+  state.typingTimer=null;
+  sendTypingState(false);
 
   if(state.activeGroup){
     input.disabled=true;
@@ -609,7 +639,24 @@ el("themeButton").addEventListener("click",()=>{
   document.body.classList.toggle("light-mode");
   showToast(document.body.classList.contains("light-mode")?"Soft light mode":"Dark glass mode");
 });
-el("emojiButton").addEventListener("click",()=>{input.value+=" 😊";input.focus()});
+el("emojiButton").addEventListener("click",()=>{input.value+=" 😊";input.focus()});input.addEventListener("input",()=>{
+  if(state.activeGroup || !state.activeFriend)return;
+  const typing=input.value.trim().length>0;
+  sendTypingState(typing);
+  clearTimeout(state.typingTimer);
+  if(typing){
+    state.typingTimer=setTimeout(()=>{
+      sendTypingState(false);
+      state.typingTimer=null;
+    },1400);
+  }
+});
+input.addEventListener("blur",()=>{
+  clearTimeout(state.typingTimer);
+  state.typingTimer=null;
+  sendTypingState(false);
+});
+
 el("attachButton").addEventListener("click",()=>showToast("Media upload comes next — real chat is already live."));
 document.querySelectorAll(".filter-pill").forEach(button=>{
   button.addEventListener("click",()=>{

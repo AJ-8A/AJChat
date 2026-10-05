@@ -184,6 +184,7 @@ async function refreshFriendStates(){
     const [friendData, groupData] = await Promise.all([api("/api/friends"), api("/api/groups")]);
     state.friends=friendData.friends||[];
     state.groups=groupData.groups||[];
+    renderOnlineFriends();
     renderFriendList();
     if(state.activeFriend){
       const active=state.friends.find(f=>f.username===state.activeFriend);
@@ -203,10 +204,12 @@ function startFriendRefresh(){
 async function loadFriends(shouldRender=true){
   const data=await api("/api/friends");
   state.friends=data.friends||[];
+  renderOnlineFriends();
   if(shouldRender)renderFriendList();
   if(state.activeFriend && !state.friends.some(f=>f.username===state.activeFriend)){
     state.activeFriend=null;
   }
+  renderOnlineFriends();
   if(!state.friends.length && !state.groups.length) renderEmptyFriends();
 }
 
@@ -220,6 +223,37 @@ async function loadGroups(shouldRender=true){
   if(shouldRender)renderFriendList();
   if(state.activeGroup && !state.groups.some(g=>Number(g.id)===Number(state.activeGroup))){
     state.activeGroup=null;
+  }
+}
+
+function renderOnlineFriends(){
+  const strip=el("onlineStrip");
+  const count=el("onlineCount");
+  const avatars=el("onlineAvatars");
+  if(!strip||!count||!avatars)return;
+
+  const online=state.friends.filter(friend=>friend.online);
+  count.textContent=String(online.length);
+  strip.hidden=online.length===0;
+  avatars.innerHTML="";
+
+  online.slice(0,8).forEach(friend=>{
+    const button=document.createElement("button");
+    button.type="button";
+    button.className="online-avatar";
+    button.title=friend.username+" is online";
+    button.setAttribute("aria-label","Open chat with "+friend.username);
+    button.innerHTML="<span class=\"online-avatar-face\">"+escapeHTML(friend.initials||friend.username.slice(0,2).toUpperCase())+"</span><i></i>";
+    button.addEventListener("click",()=>selectFriend(friend.username));
+    avatars.appendChild(button);
+  });
+
+  if(online.length>8){
+    const more=document.createElement("span");
+    more.className="online-more";
+    more.textContent="+"+(online.length-8);
+    more.title=online.slice(8).map(friend=>friend.username).join(", ");
+    avatars.appendChild(more);
   }
 }
 

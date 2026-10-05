@@ -86,15 +86,18 @@ async function authUser(request, env) {
   const now = Math.floor(Date.now() / 1000);
   const row = await env.AJCHAT_DB
     .prepare(`
-      SELECT u.id, u.username
+      SELECT u.id, u.username, COALESCE(uc.role, 'user') AS role,
+             COALESCE(uc.suspended_until, 0) AS suspended_until
       FROM sessions s
       JOIN users u ON u.id = s.user_id
+      LEFT JOIN user_controls uc ON uc.user_id = u.id
       WHERE s.token = ? AND s.expires_at > ?
     `)
     .bind(token, now)
     .first();
 
-  return row || null;
+  if (!row || Number(row.suspended_until || 0) > now) return null;
+  return row;
 }
 
 function initials(username) {
@@ -186,6 +189,26 @@ export default {
           }))
         });
       }
+      if (url.pathname === "/api/admin/users" && request.method === "GET") {
+        if (!adminAuthorized(request, env)) return json(request,{error:"Unauthorized"},401);
+        const q=cleanProfileText(url.searchParams.get("q"),40);
+        const rows=await env.AJCHAT_DB.prepare("SELECT u.id,u.username,u.created_at,COALESCE(uc.role,'user') AS role,COALESCE(uc.suspended_until,0) AS suspended_until,CASE WHEN COALESCE(p.last_seen,0)>=unixepoch()-45 THEN 1 ELSE 0 END AS online FROM users u LEFT JOIN user_controls uc ON uc.user_id=u.id LEFT JOIN user_presence p ON p.user_id=u.id WHERE ?='' OR u.username LIKE ? COLLATE NOCASE ORDER BY u.id DESC LIMIT 50").bind(q,"%"+q+"%").all();
+        return json(request,{users:(rows.results||[]).map(row=>({...row,id:Number(row.id),online:Boolean(Number(row.online)),suspended:Boolean(Number(row.suspended_until||0))}))});
+      }
+
+      const adminUserControl=url.pathname.match(/^\/api\/admin\/users\/(\d+)\/(suspend|unsuspend|delete)$/);
+      if(adminUserControl && request.method==="POST"){
+        if(!adminAuthorized(request,env))return json(request,{error:"Unauthorized"},401);
+        const targetId=Number(adminUserControl[1]),action=adminUserControl[2];
+        const target=await env.AJCHAT_DB.prepare("SELECT id,username FROM users WHERE id=?").bind(targetId).first();
+        if(!target)return json(request,{error:"User not found."},404);
+        if(action==="delete"){await env.AJCHAT_DB.prepare("DELETE FROM users WHERE id=?").bind(targetId).run();return json(request,{ok:true,deleted:target.username});}
+        await env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO user_controls(user_id) VALUES(?)").bind(targetId).run();
+        const until=action==="suspend"?Math.floor(Date.now()/1000)+60*60*24*7:0;
+        await env.AJCHAT_DB.prepare("UPDATE user_controls SET suspended_until=?,updated_at=unixepoch() WHERE user_id=?").bind(until,targetId).run();
+        if(action==="suspend")await env.AJCHAT_DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(targetId).run();
+        return json(request,{ok:true,action,username:target.username,suspended_until:until});
+      }
       if (url.pathname === "/api/admin/friend" && request.method === "POST") {
         if (!adminAuthorized(request, env)) {
           return json(request, { error: "Unauthorized" }, 401);
@@ -265,6 +288,7 @@ export default {
           .prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)")
           .bind(token, userId, expires)
           .run();
+        await env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO user_controls (user_id) VALUES (?)").bind(userId).run();
 
         return json(request, { token, user: { id: userId, username, initials: initials(username) } }, 201);
       }
@@ -290,6 +314,7 @@ export default {
           .prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)")
           .bind(token, user.id, expires)
           .run();
+        await env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO user_controls (user_id) VALUES (?)").bind(user.id).run();
 
         return json(request, {
           token,

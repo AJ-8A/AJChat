@@ -879,6 +879,36 @@ export default {
         return json(request, { username: target.username, initials: initials(target.username), profile: { bio: profile?.bio || "", status: profile?.status || "Available to chat", avatar: profile?.avatar || "✨", updated_at: Number(profile?.updated_at || 0) } });
       }
 
+
+      if (url.pathname === "/api/auth/change-password" && request.method === "POST") {
+        const body = await bodyJson(request);
+        const currentPassword = typeof body.current_password === "string" ? body.current_password : "";
+        const newPassword = typeof body.new_password === "string" ? body.new_password : "";
+        const record = await env.AJCHAT_DB.prepare("SELECT password_hash FROM users WHERE id=?").bind(user.id).first();
+        if (!record || !(await verifyPassword(currentPassword, record.password_hash))) return json(request,{error:"Current password is incorrect."},401);
+        if (newPassword.length < 8) return json(request,{error:"New password must be at least 8 characters."},400);
+        const passwordHash = await hashPassword(newPassword);
+        await env.AJCHAT_DB.prepare("UPDATE users SET password_hash=? WHERE id=?").bind(passwordHash,user.id).run();
+        return json(request,{ok:true});
+      }
+
+      if (url.pathname === "/api/auth/logout-all" && request.method === "POST") {
+        await env.AJCHAT_DB.prepare("DELETE FROM sessions WHERE user_id=?").bind(user.id).run();
+        return json(request,{ok:true});
+      }
+
+      const friendControlMatch = url.pathname.match(/^\/api\/friends\/([^/]+)$/);
+      if (friendControlMatch && request.method === "DELETE") {
+        const username = decodeURIComponent(friendControlMatch[1]);
+        const friend = await env.AJCHAT_DB.prepare("SELECT id,username FROM users WHERE username=? COLLATE NOCASE").bind(username).first();
+        if (!friend || !(await isFriend(env.AJCHAT_DB,user.id,friend.id))) return json(request,{error:"Friend not found."},404);
+        await env.AJCHAT_DB.batch([
+          env.AJCHAT_DB.prepare("DELETE FROM friendships WHERE (user_id=? AND friend_id=?) OR (user_id=? AND friend_id=?)").bind(user.id,friend.id,friend.id,user.id),
+          env.AJCHAT_DB.prepare("DELETE FROM friend_requests WHERE (sender_id=? AND receiver_id=?) OR (sender_id=? AND receiver_id=?)").bind(user.id,friend.id,friend.id,user.id)
+        ]);
+        return json(request,{ok:true,removed:friend.username});
+      }
+
       if (url.pathname === "/api/blocks" && request.method === "GET") {
         const rows = await env.AJCHAT_DB.prepare("SELECT u.id, u.username FROM blocks b JOIN users u ON u.id = b.blocked_id WHERE b.blocker_id = ? ORDER BY u.username COLLATE NOCASE").bind(user.id).all();
         return json(request, { blocks: rows.results || [] });

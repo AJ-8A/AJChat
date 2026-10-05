@@ -39,3 +39,10 @@ form button{margin-top:12px;width:100%}.status,.dashboard-status{min-height:20px
 table{width:100%;border-collapse:collapse;min-width:560px}th,td{padding:13px 16px;text-align:left;border-bottom:1px solid rgba(255,255,255,.055);font-size:.7rem}th{color:var(--muted-2);font-size:.58rem;text-transform:uppercase;letter-spacing:.11em}td{color:var(--muted)}td:first-child,td:nth-child(2){color:var(--text)}
 .badge{display:inline-flex;padding:4px 8px;border-radius:999px;border:1px solid var(--border);font-size:.55rem}.badge.pending{color:#ffd88e;border-color:rgba(255,216,142,.2);background:rgba(255,216,142,.05)}.badge.accepted{color:var(--accent-2);border-color:rgba(71,209,164,.22);background:rgba(71,209,164,.05)}.badge.rejected{color:var(--danger);border-color:rgba(255,158,170,.18);background:rgba(255,158,170,.04)}
 @media(max-width:800px){.admin-shell{padding:18px 12px 34px}.admin-card{margin-top:6vh;padding:24px 18px}.topbar{align-items:flex-start;flex-direction:column}.stats-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:460px){.stat{padding:14px}.stat strong{font-size:1.5rem}}
+
+.activity-chart{height:190px;display:grid;grid-template-columns:repeat(7,1fr);gap:12px;align-items:end;padding:12px 4px 2px}
+.activity-bar-wrap{height:100%;display:grid;grid-template-rows:18px 1fr 20px;align-items:end;text-align:center;color:#8ea1a8;font-size:.56rem}
+.activity-bar-track{height:135px;display:flex;align-items:end;justify-content:center}
+.activity-bar-track i{display:block;width:min(30px,55%);min-height:6px;border-radius:8px 8px 4px 4px;background:linear-gradient(180deg,#8ee9c8,#47d1a4);box-shadow:0 10px 24px rgba(71,209,164,.12)}
+.activity-bar-wrap small{font-size:.58rem;color:#687a81}
+@media (max-width:650px){.activity-chart{gap:6px}.activity-bar-track i{width:70%}}

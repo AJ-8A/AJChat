@@ -19,7 +19,9 @@ const state = {
   presenceTimer: null,
   friendRefreshTimer: null,
   friendRequestTimer: null,
-  typingTimer: null
+  typingTimer: null,
+  replyTo: null,
+  notifications: localStorage.getItem("ajchat_notifications") !== "off"
 };
 
 const el = id => document.getElementById(id);
@@ -440,23 +442,75 @@ async function selectGroup(groupId){
   }
 }
 
+function clearReplyTarget(){
+  state.replyTo=null; el("replyBar")?.classList.add("hidden");
+  const p=el("replyPreview");if(p)p.textContent="";
+}
+function setReplyTarget(message){
+  state.replyTo=message;
+  const bar=el("replyBar"),p=el("replyPreview");
+  if(bar&&p){p.textContent=(message.sender||"")+" — "+String(message.body||"").slice(0,90);bar.classList.remove("hidden");}
+  input.focus();
+}
+async function reloadActiveChat(){
+  if(state.activeFriend){const data=await api("/api/messages/"+encodeURIComponent(state.activeFriend));state.messages=data.messages||[];}
+  else if(state.activeGroup){const data=await api("/api/groups/"+state.activeGroup+"/messages");state.messages=data.messages||[];}
+  renderMessages();
+}
+async function messageAction(message,action,payload={}){
+  try{
+    if(!state.activeFriend){showToast("Message tools are available in direct chats.");return}
+    await api("/api/messages/"+encodeURIComponent(state.activeFriend)+"/"+message.id+"/"+action,{method:"POST",body:JSON.stringify(payload)});
+    await reloadActiveChat();
+  }catch(error){showToast(error.message)}
+}
+async function ensureNotifications(){
+  if(!("Notification" in window)){showToast("Browser notifications are not supported.");return}
+  if(Notification.permission==="denied"){showToast("Notifications are blocked in browser settings.");return}
+  const p=Notification.permission==="granted"?"granted":await Notification.requestPermission();
+  state.notifications=p==="granted";localStorage.setItem("ajchat_notifications",state.notifications?"on":"off");
+  if(el("notifyButton"))el("notifyButton").textContent=state.notifications?"♢":"○";
+  showToast(state.notifications?"Notifications enabled.":"Notifications disabled.");
+}
+async function openProfile(username,editable){
+  try{
+    const data=await api("/api/profile/"+encodeURIComponent(username));const p=data.profile||{};
+    el("profileTitle").textContent="@"+data.username;el("profileAvatarPreview").textContent=p.avatar||"✨";
+    el("profileAvatar").value=p.avatar||"✨";el("profileStatus").value=p.status||"Available to chat";el("profileBio").value=p.bio||"";
+    el("profileStatusPreview").textContent=p.status||"Available to chat";
+    ["profileAvatar","profileStatus","profileBio","saveProfileButton"].forEach(id=>{if(el(id))el(id).disabled=!editable});
+    el("profileNote").textContent=editable?"Edit your public profile.":"Public profile";el("profileModal").classList.remove("hidden");
+  }catch(error){showToast(error.message)}
+}
+function closeProfile(){el("profileModal")?.classList.add("hidden")}
+async function saveProfile(){
+  try{const data=await api("/api/profile",{method:"PUT",body:JSON.stringify({avatar:el("profileAvatar").value.trim()||"✨",status:el("profileStatus").value.trim(),bio:el("profileBio").value.trim()})});el("profileAvatarPreview").textContent=data.profile.avatar;el("profileStatusPreview").textContent=data.profile.status;showToast("Profile saved.");}
+  catch(error){showToast(error.message)}
+}
+async function searchCurrentMessages(){
+  if(!state.activeFriend){showToast("Open a direct chat to search messages.");return}
+  const q=prompt("Search this chat:");if(!q?.trim())return;
+  try{const data=await api("/api/messages/"+encodeURIComponent(state.activeFriend)+"/search?q="+encodeURIComponent(q.trim()));state.messages=data.messages||[];renderMessages();showToast(state.messages.length+" matching messages found.");}
+  catch(error){showToast(error.message)}
+}
+
 function renderMessages(){
   messagesBox.innerHTML="";
-  if(!state.messages.length){
-    messagesBox.innerHTML='<div class="empty-chat"><strong>No messages yet.</strong><span>Say hello — this chat is between real people.</span></div>';
-    return;
-  }
+  if(!state.messages.length){messagesBox.innerHTML='<div class="empty-chat"><strong>No messages yet.</strong><span>Say hello — this chat is between real people.</span></div>';return}
+  const byId=new Map(state.messages.map(m=>[String(m.id),m]));
   state.messages.forEach((message,index)=>{
-    const mine=message.sender===state.me?.username;
-    const row=document.createElement("div");
-    row.className="message-row"+(mine?" me":"");
-    row.style.animationDelay=(index*25)+"ms";
-    row.innerHTML=`<article class="message"><div class="message-text">${escapeHTML(message.body)}</div><div class="message-meta"><time>${formatTime(message.created_at)}</time>${mine?'<span class="message-status">✓✓</span>':""}</div></article>`;
+    const mine=message.sender===state.me?.username;const row=document.createElement("div");
+    row.className="message-row"+(mine?" me":"");row.dataset.messageId=String(message.id);row.style.animationDelay=(index*18)+"ms";
+    const reply=message.reply_to_id?byId.get(String(message.reply_to_id)):null;const deleted=Boolean(message.deleted_at);
+    const counts={};(Array.isArray(message.reactions)?message.reactions:[]).forEach(item=>{counts[item.reaction]=(counts[item.reaction]||0)+1});
+    const reactions=Object.entries(counts).map(x=>"<span class='reaction-chip'>"+escapeHTML(x[0])+" "+x[1]+"</span>").join("");
+    const quote=reply?"<div class='reply-quote'><strong>"+escapeHTML(reply.sender||"")+"</strong><span>"+escapeHTML(String(reply.body||"").slice(0,100))+"</span></div>":"";
+    const body=deleted?"This message was deleted.":escapeHTML(message.body||"");const status=mine?(message.is_read?"✓✓":"✓"):"";
+    row.innerHTML="<article class='message'>"+quote+"<div class='message-text"+(deleted?" deleted":"")+"'>"+body+"</div>"+(reactions?"<div class='reaction-row'>"+reactions+"</div>":"")+"<div class='message-meta'><time>"+formatTime(message.created_at)+(message.edited_at&&!deleted?" · edited":"")+(message.pinned?" · pinned":"")+"</time>"+(mine?"<span class='message-status'>"+status+"</span>":"")+"</div><div class='message-tools'><button type='button' data-action='reply'>↩</button><button type='button' data-action='react' data-reaction='❤️'>❤️</button><button type='button' data-action='react' data-reaction='👍'>👍</button><button type='button' data-action='react' data-reaction='🔥'>🔥</button><button type='button' data-action='pin'>📌</button>"+(mine&&!deleted?"<button type='button' data-action='edit'>✏</button><button type='button' data-action='delete'>🗑</button>":"")+"</div></article>";
     messagesBox.appendChild(row);
   });
   messagesBox.scrollTop=messagesBox.scrollHeight;
 }
-
 function startGroupPolling(){
   if(state.groupPollTimer || !state.activeGroup || !state.token) return;
   const poll=async()=>{
@@ -670,11 +724,34 @@ el("composer").addEventListener("submit",event=>{event.preventDefault();sendMess
 el("newChatButton").addEventListener("click",addFriend);
 el("newGroupButton")?.addEventListener("click",createGroup);
 el("backButton").addEventListener("click",()=>sidebar.classList.remove("closed"));
+document.getElementById("messages")?.addEventListener("click",async event=>{
+  const b=event.target.closest("button[data-action]");if(!b)return;const row=b.closest(".message-row");if(!row)return;
+  const m=state.messages.find(x=>String(x.id)===row.dataset.messageId);if(!m)return;
+  const a=b.dataset.action;
+  if(a==="reply"){setReplyTarget(m);return}
+  if(a==="react"){await messageAction(m,"react",{reaction:b.dataset.reaction});return}
+  if(a==="pin"){await messageAction(m,"pin");return}
+  if(a==="edit"){const v=prompt("Edit message:",m.body||"");if(v!==null)await messageAction(m,"edit",{text:v});return}
+  if(a==="delete"&&confirm("Delete this message?"))await messageAction(m,"delete");
+});
+el("cancelReply")?.addEventListener("click",clearReplyTarget);
+el("chatSearchButton")?.addEventListener("click",searchCurrentMessages);
+el("notifyButton")?.addEventListener("click",ensureNotifications);
+el("profileClose")?.addEventListener("click",closeProfile);
+el("closeProfileButton")?.addEventListener("click",closeProfile);
+el("saveProfileButton")?.addEventListener("click",saveProfile);
+el("chatAvatar")?.addEventListener("click",()=>openProfile(state.activeFriend||state.me?.username,!state.activeFriend));
+el("chatMoreButton")?.addEventListener("click",async()=>{
+  if(state.activeFriend){const c=prompt("Chat options:\n1 = View profile\n2 = Block user\n3 = Search messages");if(c==="1")await openProfile(state.activeFriend,false);else if(c==="2"&&confirm("Block @"+state.activeFriend+"?")){await api("/api/blocks",{method:"POST",body:JSON.stringify({username:state.activeFriend})});state.activeFriend=null;await loadFriends();renderEmptyFriends()}else if(c==="3")await searchCurrentMessages()}
+  else await openProfile(state.me?.username,true);
+});
+
 el("themeButton").addEventListener("click",()=>{
   document.body.classList.toggle("light-mode");
   showToast(document.body.classList.contains("light-mode")?"Soft light mode":"Dark glass mode");
 });
-el("emojiButton").addEventListener("click",()=>{input.value+=" 😊";input.focus()});input.addEventListener("input",()=>{
+el("emojiButton").addEventListener("click",()=>el("emojiPanel")?.classList.toggle("hidden"));
+el("emojiPanel")?.addEventListener("click",event=>{const b=event.target.closest("button");if(!b)return;input.value+=b.textContent;input.focus();el("emojiPanel").classList.add("hidden")});input.addEventListener("input",()=>{
   if(state.activeGroup || !state.activeFriend)return;
   const typing=input.value.trim().length>0;
   sendTypingState(typing);

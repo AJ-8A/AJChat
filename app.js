@@ -486,6 +486,23 @@ async function openProfile(username,editable){
   }catch(error){showToast(error.message)}
 }
 function closeProfile(){el("profileModal")?.classList.add("hidden")}
+async function changePassword(){
+  const current=prompt("Current password:");if(current===null)return;
+  const next=prompt("New password (8+ characters):");if(next===null)return;
+  const again=prompt("Repeat new password:");
+  if(next!==again){showToast("Passwords do not match.");return}
+  try{await api("/api/auth/change-password",{method:"POST",body:JSON.stringify({current_password:current,new_password:next})});showToast("Password changed.");}
+  catch(error){showToast(error.message)}
+}
+async function logoutAllDevices(){
+  if(!confirm("Log out AJChat on every device?"))return;
+  try{
+    await api("/api/auth/logout-all",{method:"POST",body:"{}"});
+    localStorage.removeItem("ajchat_token");state.token="";state.me=null;
+    if(state.socket){try{state.socket.close()}catch{}}
+    clearReplyTarget();showAuth(true);showToast("Logged out on all devices.");
+  }catch(error){showToast(error.message)}
+}
 async function saveProfile(){
   try{const data=await api("/api/profile",{method:"PUT",body:JSON.stringify({avatar:el("profileAvatar").value.trim()||"✨",status:el("profileStatus").value.trim(),bio:el("profileBio").value.trim()})});el("profileAvatarPreview").textContent=data.profile.avatar;el("profileStatusPreview").textContent=data.profile.status;showToast("Profile saved.");}
   catch(error){showToast(error.message)}
@@ -745,6 +762,8 @@ el("notifyButton")?.addEventListener("click",ensureNotifications);
 el("profileClose")?.addEventListener("click",closeProfile);
 el("closeProfileButton")?.addEventListener("click",closeProfile);
 el("saveProfileButton")?.addEventListener("click",saveProfile);
+el("changePasswordButton")?.addEventListener("click",changePassword);
+el("logoutAllButton")?.addEventListener("click",logoutAllDevices);
 el("chatAvatar")?.addEventListener("click",()=>openProfile(state.activeFriend||state.me?.username,!state.activeFriend));
 el("chatMoreButton")?.addEventListener("click",async()=>{
   if(state.activeGroup){
@@ -766,7 +785,7 @@ el("chatMoreButton")?.addEventListener("click",async()=>{
     }catch(error){showToast(error.message)}
     return;
   }
-  if(state.activeFriend){const c=prompt("Chat options:\n1 = View profile\n2 = Block user\n3 = Search messages");if(c==="1")await openProfile(state.activeFriend,false);else if(c==="2"&&confirm("Block @"+state.activeFriend+"?")){await api("/api/blocks",{method:"POST",body:JSON.stringify({username:state.activeFriend})});state.activeFriend=null;await loadFriends();renderEmptyFriends()}else if(c==="3")await searchCurrentMessages()}
+  if(state.activeFriend){const c=prompt("Chat options:\n1 = View profile\n2 = Remove friend\n3 = Block user\n4 = Search messages");if(c==="1")await openProfile(state.activeFriend,false);else if(c==="2"&&confirm("Remove @"+state.activeFriend+" from friends?")){const old=state.activeFriend;await api("/api/friends/"+encodeURIComponent(old),{method:"DELETE"});state.activeFriend=null;await loadFriends();renderEmptyFriends();showToast("Friend removed.");}else if(c==="3"&&confirm("Block @"+state.activeFriend+"?")){await api("/api/blocks",{method:"POST",body:JSON.stringify({username:state.activeFriend})});state.activeFriend=null;await loadFriends();renderEmptyFriends()}else if(c==="4")await searchCurrentMessages()}
   else await openProfile(state.me?.username,true);
 });
 

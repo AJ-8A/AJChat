@@ -746,6 +746,45 @@ export default {
         return json(request, { messages: (rows.results || []).reverse() });
       }
 
+      const profileMatch = url.pathname.match(/^\/api\/profile(?:\/([^/]+))?$/);
+      if (profileMatch && (request.method === "GET" || request.method === "PUT")) {
+        const username = profileMatch[1] ? decodeURIComponent(profileMatch[1]) : user.username;
+        const target = await env.AJCHAT_DB.prepare("SELECT id, username FROM users WHERE username = ? COLLATE NOCASE").bind(username).first();
+        if (!target) return json(request, { error: "User not found." }, 404);
+        if (request.method === "PUT" && Number(target.id) !== Number(user.id)) return json(request, { error: "You can only edit your own profile." }, 403);
+        if (request.method === "PUT") {
+          const body = await bodyJson(request);
+          const bio = cleanProfileText(body.bio, 160);
+          const status = cleanProfileText(body.status, 80) || "Available to chat";
+          const avatar = cleanProfileText(body.avatar, 8) || "✨";
+          await env.AJCHAT_DB.prepare("INSERT OR REPLACE INTO profiles (user_id, bio, status, avatar, updated_at) VALUES (?, ?, ?, ?, unixepoch())").bind(user.id, bio, status, avatar).run();
+        }
+        const profile = await ensureProfile(env.AJCHAT_DB, target.id);
+        return json(request, { username: target.username, initials: initials(target.username), profile: { bio: profile?.bio || "", status: profile?.status || "Available to chat", avatar: profile?.avatar || "✨", updated_at: Number(profile?.updated_at || 0) } });
+      }
+
+      if (url.pathname === "/api/blocks" && request.method === "GET") {
+        const rows = await env.AJCHAT_DB.prepare("SELECT u.id, u.username FROM blocks b JOIN users u ON u.id = b.blocked_id WHERE b.blocker_id = ? ORDER BY u.username COLLATE NOCASE").bind(user.id).all();
+        return json(request, { blocks: rows.results || [] });
+      }
+
+      if (url.pathname === "/api/blocks" && request.method === "POST") {
+        const body = await bodyJson(request);
+        const username = cleanUsername(body.username);
+        const target = await env.AJCHAT_DB.prepare("SELECT id, username FROM users WHERE username = ? COLLATE NOCASE").bind(username).first();
+        if (!target) return json(request, { error: "User not found." }, 404);
+        if (Number(target.id) === Number(user.id)) return json(request, { error: "You cannot block yourself." }, 400);
+        await env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO blocks (blocker_id, blocked_id) VALUES (?, ?)").bind(user.id, target.id).run();
+        return json(request, { ok: true, username: target.username });
+      }
+
+      const blockMatch = url.pathname.match(/^\/api\/blocks\/([^/]+)$/);
+      if (blockMatch && request.method === "DELETE") {
+        const target = await env.AJCHAT_DB.prepare("SELECT id FROM users WHERE username = ? COLLATE NOCASE").bind(decodeURIComponent(blockMatch[1])).first();
+        if (!target) return json(request, { error: "User not found." }, 404);
+        await env.AJCHAT_DB.prepare("DELETE FROM blocks WHERE blocker_id = ? AND blocked_id = ?").bind(user.id, target.id).run();
+        return json(request, { ok: true });
+      }
       if (url.pathname === "/api/logout" && request.method === "POST") {
         const header = request.headers.get("Authorization") || "";
         const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";

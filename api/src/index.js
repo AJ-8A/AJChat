@@ -154,13 +154,14 @@ export default {
           return json(request, { error: "Unauthorized" }, 401);
         }
 
-        const [users, messages, friendships, pendingRequests, messagesToday, usersToday, recentUsers, recentRequests, onlineUsers] = await Promise.all([
+        const [users, messages, friendships, pendingRequests, messagesToday, usersToday, dailyMessages, recentUsers, recentRequests, onlineUsers] = await Promise.all([
           env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM users").first(),
           env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM messages").first(),
           env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM friendships").first(),
           env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM friend_requests WHERE status = 'pending'").first(),
           env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM messages WHERE created_at >= unixepoch('now','start of day')").first(),
           env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM users WHERE created_at >= unixepoch('now','start of day')").first(),
+          env.AJCHAT_DB.prepare("SELECT strftime('%Y-%m-%d', created_at, 'unixepoch') AS day, COUNT(*) AS count FROM messages WHERE created_at >= unixepoch('now','-6 days','start of day') GROUP BY day ORDER BY day").all(),
           env.AJCHAT_DB.prepare("SELECT id, username, created_at FROM users ORDER BY id DESC LIMIT 20").all(),
           env.AJCHAT_DB.prepare("SELECT r.id, r.status, r.created_at, sender.username AS sender, receiver.username AS receiver FROM friend_requests r JOIN users sender ON sender.id = r.sender_id JOIN users receiver ON receiver.id = r.receiver_id ORDER BY r.id DESC LIMIT 20").all(),
           env.AJCHAT_DB.prepare("SELECT u.id, u.username, p.last_seen FROM user_presence p JOIN users u ON u.id = p.user_id WHERE p.last_seen >= unixepoch() - 45 ORDER BY p.last_seen DESC, u.username COLLATE NOCASE").all()
@@ -175,6 +176,7 @@ export default {
             messages_today: Number(messagesToday?.count || 0),
             users_today: Number(usersToday?.count || 0)
           },
+          daily_messages: (dailyMessages.results || []).map(row => ({day: row.day, count: Number(row.count || 0)})),
           recent_users: recentUsers.results || [],
           recent_requests: recentRequests.results || [],
           online_users: (onlineUsers.results || []).map(user => ({

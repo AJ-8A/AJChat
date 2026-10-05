@@ -23,6 +23,18 @@ async function loadDashboard(){
   document.getElementById("friendshipsStat").textContent=Number(data.stats?.friendships||0).toLocaleString();
   document.getElementById("requestsStat").textContent=Number(data.stats?.pending_requests||0).toLocaleString();
 
+  const chart=document.getElementById("activityChart");
+  if(chart){
+    const source=new Map((data.daily_messages||[]).map(item=>[item.day,Number(item.count||0)]));
+    const days=[]; for(let i=6;i>=0;i--){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10));}
+    const max=Math.max(1,...days.map(day=>source.get(day)||0));
+    chart.innerHTML=days.map(day=>{
+      const value=source.get(day)||0;
+      const label=day.slice(5);
+      return "<div class='activity-bar-wrap'><span>"+value+"</span><div class='activity-bar-track'><i style='height:"+Math.max(6,Math.round(value/max*100))+"%'></i></div><small>"+label+"</small></div>";
+    }).join("");
+  }
+
   const onlineUsers=data.online_users||[];
   document.getElementById("onlineAdminCount").textContent=String(onlineUsers.length);
   document.getElementById("onlineAdminList").innerHTML=onlineUsers.map(user=>{

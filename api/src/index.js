@@ -590,32 +590,43 @@ export default {
           const body = await bodyJson(request);
           const messageBody = cleanMessage(body.text);
           if (!messageBody) return json(request, { error: "Message cannot be empty." }, 400);
+          const replyToId = Number(body.reply_to_id || 0) || null;
 
           const inserted = await env.AJCHAT_DB
             .prepare("INSERT INTO messages (room_id, sender_id, recipient_id, body) VALUES (?, ?, ?, ?)")
             .bind(room, user.id, user.id, messageBody)
             .run();
+          const messageId = Number(inserted.meta?.last_row_id || 0);
+          await env.AJCHAT_DB.prepare("INSERT INTO message_meta(message_id,reply_to_id) VALUES(?,?)").bind(messageId,replyToId).run();
 
           return json(request, {
             message: {
-              id: Number(inserted.meta?.last_row_id || 0),
+              id: messageId,
               body: messageBody,
               created_at: Math.floor(Date.now() / 1000),
-              sender: user.username
+              sender: user.username,
+              reply_to_id: replyToId,
+              reactions: []
             }
           }, 201);
         }
 
         const rows = await env.AJCHAT_DB.prepare(`
-          SELECT m.id, m.body, m.created_at, sender.username AS sender
+          SELECT m.id, m.body, m.created_at, sender.username AS sender,
+                 mm.reply_to_id, mm.edited_at, mm.deleted_at, mm.pinned, mm.reactions_json
           FROM messages m
           JOIN users sender ON sender.id = m.sender_id
+          LEFT JOIN message_meta mm ON mm.message_id = m.id
           WHERE m.room_id = ?
           ORDER BY m.id DESC
           LIMIT 100
         `).bind(room).all();
 
-        return json(request, { messages: (rows.results || []).reverse(), group: membership });
+        return json(request, { messages: (rows.results || []).reverse().map(message => ({
+          ...message,
+          reactions: parseReactions(message.reactions_json),
+          pinned: Boolean(Number(message.pinned || 0))
+        })), group: membership });
       }
 
       if (url.pathname === "/api/friend-requests" && request.method === "GET") {

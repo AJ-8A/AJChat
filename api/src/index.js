@@ -1024,6 +1024,18 @@ export default {
         return new Response(object.body,{headers});
       }
 
+
+      if (url.pathname === "/api/search" && request.method === "GET") {
+        const q=cleanProfileText(url.searchParams.get("q"),120);
+        if(!q)return json(request,{users:[],messages:[]});
+        const like="%"+q+"%";
+        const [users,messages] = await Promise.all([
+          env.AJCHAT_DB.prepare("SELECT u.id,u.username,substr(upper(u.username),1,2) AS initials FROM users u WHERE u.username LIKE ? COLLATE NOCASE AND u.id<>? ORDER BY u.username COLLATE NOCASE LIMIT 20").bind(like,user.id).all(),
+          env.AJCHAT_DB.prepare("SELECT m.id,m.body,m.created_at,s.username AS sender FROM messages m JOIN users s ON s.id=m.sender_id WHERE (m.sender_id=? OR m.recipient_id=?) AND m.body LIKE ? COLLATE NOCASE ORDER BY m.id DESC LIMIT 40").bind(user.id,user.id,like).all()
+        ]);
+        return json(request,{users:users.results||[],messages:messages.results||[]});
+      }
+
       const messageSearch = url.pathname.match(/^\/api\/messages\/([^/]+)\/search$/);
       if (messageSearch && request.method === "GET") {
         const username=decodeURIComponent(messageSearch[1]);

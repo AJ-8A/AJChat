@@ -554,7 +554,7 @@ async function handleCallSignal(data){
     if(data.type==="call-accept" && state.rtc){
       const offer=await state.rtc.createOffer();
       await state.rtc.setLocalDescription(offer);
-      callSocketSend({type:"call-offer",sdp:offer});
+      callSocketSend({type:"call-offer",mode:state.callMode,sdp:offer});
       return;
     }
     if(data.type==="call-offer"){

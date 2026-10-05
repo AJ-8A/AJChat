@@ -785,6 +785,52 @@ export default {
         await env.AJCHAT_DB.prepare("DELETE FROM blocks WHERE blocker_id = ? AND blocked_id = ?").bind(user.id, target.id).run();
         return json(request, { ok: true });
       }
+      const messageControl = url.pathname.match(/^\/api\/messages\/([^/]+)\/(\d+)\/(edit|delete|react|pin)$/);
+      if (messageControl && request.method === "POST") {
+        const username = decodeURIComponent(messageControl[1]);
+        const messageId = Number(messageControl[2]);
+        const action = messageControl[3];
+        const friend = await env.AJCHAT_DB.prepare("SELECT id FROM users WHERE username=? COLLATE NOCASE").bind(username).first();
+        if (!friend || !(await isFriend(env.AJCHAT_DB, user.id, friend.id))) return json(request,{error:"Friend not found."},404);
+        const message = await env.AJCHAT_DB.prepare("SELECT id,sender_id FROM messages WHERE id=? AND room_id=?").bind(messageId,roomFor(user.id,friend.id)).first();
+        if (!message) return json(request,{error:"Message not found."},404);
+        if (action !== "react" && Number(message.sender_id)!==Number(user.id)) return json(request,{error:"Only the sender can change this message."},403);
+        if (action==="edit") {
+          const body=await bodyJson(request); const next=cleanMessage(body.text);
+          if(!next)return json(request,{error:"Message cannot be empty."},400);
+          await env.AJCHAT_DB.prepare("UPDATE messages SET body=? WHERE id=?").bind(next,messageId).run();
+          await env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO message_meta(message_id) VALUES(?)").bind(messageId).run();
+          await env.AJCHAT_DB.prepare("UPDATE message_meta SET edited_at=unixepoch(),deleted_at=NULL WHERE message_id=?").bind(messageId).run();
+        } else if (action==="delete") {
+          await env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO message_meta(message_id) VALUES(?)").bind(messageId).run();
+          await env.AJCHAT_DB.prepare("UPDATE message_meta SET deleted_at=unixepoch() WHERE message_id=?").bind(messageId).run();
+        } else if (action==="pin") {
+          await env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO message_meta(message_id) VALUES(?)").bind(messageId).run();
+          await env.AJCHAT_DB.prepare("UPDATE message_meta SET pinned=CASE WHEN pinned=1 THEN 0 ELSE 1 END WHERE message_id=?").bind(messageId).run();
+        } else {
+          const body=await bodyJson(request);
+          const reaction=["❤️","😂","👍","🔥","😮","😢"].includes(body.reaction)?body.reaction:"";
+          if(!reaction)return json(request,{error:"Unsupported reaction."},400);
+          const meta=await env.AJCHAT_DB.prepare("SELECT reactions_json FROM message_meta WHERE message_id=?").bind(messageId).first();
+          const reactions=parseReactions(meta?.reactions_json);
+          const mine=reactions.findIndex(item=>Number(item.user_id)===Number(user.id)&&item.reaction===reaction);
+          const next=mine>=0?reactions.filter((_,i)=>i!==mine):reactions.filter(item=>Number(item.user_id)!==Number(user.id)).concat([{user_id:Number(user.id),username:user.username,reaction}]);
+          await env.AJCHAT_DB.prepare("INSERT OR REPLACE INTO message_meta(message_id,reactions_json) VALUES(?,?)").bind(messageId,JSON.stringify(next)).run();
+          return json(request,{ok:true,reactions:next});
+        }
+        return json(request,{ok:true});
+      }
+
+      const messageSearch = url.pathname.match(/^\/api\/messages\/([^/]+)\/search$/);
+      if (messageSearch && request.method === "GET") {
+        const username=decodeURIComponent(messageSearch[1]);
+        const friend=await env.AJCHAT_DB.prepare("SELECT id FROM users WHERE username=? COLLATE NOCASE").bind(username).first();
+        if(!friend || !(await isFriend(env.AJCHAT_DB,user.id,friend.id))) return json(request,{error:"Friend not found."},404);
+        const q=cleanProfileText(url.searchParams.get("q"),120);
+        if(!q)return json(request,{messages:[]});
+        const rows=await env.AJCHAT_DB.prepare("SELECT m.id,m.body,m.created_at,sender.username AS sender,mm.reply_to_id,mm.edited_at,mm.deleted_at,mm.pinned,mm.reactions_json FROM messages m JOIN users sender ON sender.id=m.sender_id LEFT JOIN message_meta mm ON mm.message_id=m.id WHERE m.room_id=? AND m.body LIKE ? COLLATE NOCASE ORDER BY m.id DESC LIMIT 50").bind(roomFor(user.id,friend.id),"%"+q+"%").all();
+        return json(request,{messages:(rows.results||[]).reverse().map(m=>({...m,reactions:parseReactions(m.reactions_json),pinned:Boolean(Number(m.pinned||0))}))});
+      }
       if (url.pathname === "/api/logout" && request.method === "POST") {
         const header = request.headers.get("Authorization") || "";
         const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";

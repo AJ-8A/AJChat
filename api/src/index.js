@@ -146,7 +146,7 @@ export default {
       }
 
       if (url.pathname === "/api/version" && request.method === "GET") {
-        return json(request, { ok: true, version: "messages-v2", build: "2026-10-04" });
+        return json(request, { ok: true, version: "ajchat-pro-1", build: "2026-10-05" });
       }
 
       if (url.pathname === "/api/admin/overview" && request.method === "GET") {
@@ -392,13 +392,18 @@ export default {
             JOIN users u ON u.id = f.friend_id
             LEFT JOIN user_presence p ON p.user_id = u.id
             WHERE f.user_id = ?
+              AND NOT EXISTS (
+                SELECT 1 FROM blocks b
+                WHERE (b.blocker_id = ? AND b.blocked_id = u.id)
+                   OR (b.blocker_id = u.id AND b.blocked_id = ?)
+              )
             ORDER BY COALESCE(last_message_time, 0) DESC, u.username COLLATE NOCASE
           `)
           .bind(
             user.id,user.id,user.id,
             user.id,user.id,user.id,
             user.id,user.id,user.id,user.id,user.id,
-            user.id
+            user.id,user.id,user.id
           )
           .all();
 

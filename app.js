@@ -733,6 +733,10 @@ function connectSocket(retry=0){
       if(data.type==="typing"){
         renderTyping(Boolean(data.typing), data.username || expectedFriend);
       }
+      if(["call-invite","call-accept","call-offer","call-answer","call-ice","call-end","call-reject"].includes(data.type)){
+        handleCallSignal(data);
+        return;
+      }
       if(data.type==="message" && data.message){
         renderTyping(false, expectedFriend);
         if(!state.messages.some(m=>String(m.id)===String(data.message.id))){
@@ -898,6 +902,20 @@ document.getElementById("messages")?.addEventListener("click",async event=>{
 el("cancelReply")?.addEventListener("click",clearReplyTarget);
 el("chatSearchButton")?.addEventListener("click",searchCurrentMessages);
 el("notifyButton")?.addEventListener("click",ensureNotifications);
+el("audioCallButton")?.addEventListener("click",()=>startCall("audio"));
+el("videoCallButton")?.addEventListener("click",()=>startCall("video"));
+el("acceptCallButton")?.addEventListener("click",acceptIncomingCall);
+el("rejectCallButton")?.addEventListener("click",()=>{callSocketSend({type:"call-reject"});cleanupCall(false)});
+el("callEndButton")?.addEventListener("click",()=>cleanupCall(true));
+el("callMuteButton")?.addEventListener("click",()=>{
+  const track=state.localStream?.getAudioTracks()[0];if(!track)return;
+  track.enabled=!track.enabled;el("callMuteButton").textContent=track.enabled?"🎙":"🔇";
+});
+el("callCameraButton")?.addEventListener("click",()=>{
+  const track=state.localStream?.getVideoTracks()[0];if(!track)return;
+  track.enabled=!track.enabled;el("callCameraButton").textContent=track.enabled?"▣":"◻";
+});
+
 el("profileClose")?.addEventListener("click",closeProfile);
 el("closeProfileButton")?.addEventListener("click",closeProfile);
 el("saveProfileButton")?.addEventListener("click",saveProfile);

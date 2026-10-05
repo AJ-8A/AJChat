@@ -759,7 +759,7 @@ el("chatMoreButton")?.addEventListener("click",async()=>{
         if(username){await api("/api/groups/"+state.activeGroup+"/members",{method:"POST",body:JSON.stringify({username})});await loadGroups();await selectGroup(state.activeGroup);showToast("Member added.");}
       }else if(choice==="3"){
         const name=prompt("New group name:");
-        if(name){await api("/api/groups/"+state.activeGroup,{method:"PATCH",body:JSON.stringify({name}));await loadGroups();await selectGroup(state.activeGroup);}
+        if(name){await api("/api/groups/"+state.activeGroup,{method:"PATCH",body:JSON.stringify({name})});await loadGroups();await selectGroup(state.activeGroup);}
       }else if(choice==="4"&&confirm("Leave this group?")){
         const id=state.activeGroup;await api("/api/groups/"+id,{method:"DELETE"});state.activeGroup=null;await loadGroups();renderFriendList();renderEmptyFriends();
       }

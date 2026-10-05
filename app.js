@@ -624,13 +624,14 @@ async function sendMessage(){
   if(state.activeGroup){
     input.disabled=true;
     try{
-      const data=await api("/api/groups/"+state.activeGroup+"/messages",{method:"POST",body:JSON.stringify({text})});
+      const data=await api("/api/groups/"+state.activeGroup+"/messages",{method:"POST",body:JSON.stringify({text,reply_to_id:state.replyTo?.id||null})});
       if(data.message && !state.messages.some(m=>String(m.id)===String(data.message.id))){
         state.messages.push(data.message);
         state.messages=state.messages.slice(-100);
         renderMessages();
       }
       input.value="";
+      clearReplyTarget();
       input.focus();
       el("chatStatus").textContent="sent to group";
     }catch(error){
@@ -657,6 +658,7 @@ async function sendMessage(){
     }
 
     input.value="";
+    clearReplyTarget();
     input.focus();
 
     if(state.socket && state.socket.readyState===WebSocket.OPEN){

@@ -98,3 +98,45 @@ CREATE TABLE IF NOT EXISTS group_members (
 
 CREATE INDEX IF NOT EXISTS idx_group_members_user ON group_members(user_id, group_id);
 CREATE INDEX IF NOT EXISTS idx_group_members_group ON group_members(group_id, joined_at);
+
+-- AJChat Pro: public profiles, blocks, message controls and group read state
+CREATE TABLE IF NOT EXISTS profiles (
+  user_id INTEGER PRIMARY KEY,
+  bio TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'Available to chat',
+  avatar TEXT NOT NULL DEFAULT '✨',
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS blocks (
+  blocker_id INTEGER NOT NULL,
+  blocked_id INTEGER NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  PRIMARY KEY (blocker_id, blocked_id),
+  FOREIGN KEY (blocker_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (blocked_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_blocks_blocked ON blocks(blocked_id);
+
+CREATE TABLE IF NOT EXISTS message_meta (
+  message_id INTEGER PRIMARY KEY,
+  reply_to_id INTEGER,
+  edited_at INTEGER,
+  deleted_at INTEGER,
+  pinned INTEGER NOT NULL DEFAULT 0,
+  reactions_json TEXT NOT NULL DEFAULT '[]',
+  FOREIGN KEY (message_id) REFERENCES messages(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_message_meta_reply ON message_meta(reply_to_id);
+CREATE INDEX IF NOT EXISTS idx_message_meta_pinned ON message_meta(pinned);
+
+CREATE TABLE IF NOT EXISTS group_read_state (
+  group_id INTEGER NOT NULL,
+  user_id INTEGER NOT NULL,
+  last_read_message_id INTEGER NOT NULL DEFAULT 0,
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  PRIMARY KEY (group_id, user_id),
+  FOREIGN KEY (group_id) REFERENCES groups(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

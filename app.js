@@ -29,6 +29,7 @@ const state = {
   callTimer: null,
   callStartedAt: 0,
   incomingCall: null,
+  pendingIceCandidates: [],
   notificationRegistration: null,
   socialTab: "home",
   socialRefreshTimer: null,
@@ -689,6 +690,23 @@ function callSocketSend(payload){
   }
   return false;
 }
+function waitForCallSocket(timeout=7000){
+  if(state.socket?.readyState===WebSocket.OPEN)return Promise.resolve(true);
+  if(!state.activeFriend)return Promise.resolve(false);
+  return new Promise(resolve=>{
+    const started=Date.now();
+    const timer=setInterval(()=>{
+      if(state.socket?.readyState===WebSocket.OPEN){clearInterval(timer);resolve(true);return}
+      if(Date.now()-started>=timeout){clearInterval(timer);resolve(false)}
+    },120);
+  });
+}
+function flushPendingIce(){
+  if(!state.rtc?.remoteDescription)return;
+  const pending=[...state.pendingIceCandidates];
+  state.pendingIceCandidates=[];
+  pending.forEach(candidate=>state.rtc.addIceCandidate(candidate).catch(()=>{}));
+}
 
 function resetCallUI(){
   clearInterval(state.callTimer);state.callTimer=null;state.callStartedAt=0;
@@ -705,6 +723,7 @@ function cleanupCall(sendEnd=false){
   state.rtc=null;
   state.localStream?.getTracks().forEach(track=>track.stop());
   state.localStream=null;
+  state.pendingIceCandidates=[];
   state.callMode=null;state.callPeer=null;state.incomingCall=null;
   resetCallUI();
 }
@@ -720,42 +739,67 @@ function updateCallTimer(){
 async function preparePeer(mode){
   if(!state.socket || state.socket.readyState!==WebSocket.OPEN) throw new Error("Chat connection is not ready.");
   state.callMode=mode;
-  state.localStream=await navigator.mediaDevices.getUserMedia({audio:true,video:mode==="video"});
-  const pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"}]});
+  state.pendingIceCandidates=[];
+  let stream;
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({
+      audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},
+      video:mode==="video"?{facingMode:"user",width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30,max:30}}:false
+    });
+  }catch(error){
+    const reason=error?.name==="NotAllowedError"?"Camera/microphone permission was blocked."
+      :error?.name==="NotFoundError"?"No camera or microphone was found."
+      :error?.name==="NotReadableError"?"Camera or microphone is busy in another app."
+      :"Could not access the "+(mode==="video"?"camera and microphone":"microphone")+".";
+    throw new Error(reason+" Check browser permissions and try again.");
+  }
+  state.localStream=stream;
+  const pc=new RTCPeerConnection({iceServers:[
+    {urls:"stun:stun.cloudflare.com:3478"},
+    {urls:"stun:stun.l.google.com:19302"}
+  ]});
   state.rtc=pc;
   state.localStream.getTracks().forEach(track=>pc.addTrack(track,state.localStream));
   pc.onicecandidate=e=>{if(e.candidate)callSocketSend({type:"call-ice",candidate:e.candidate})};
   pc.ontrack=e=>{
     const stream=e.streams[0];
-    if(mode==="video"){const video=el("remoteVideo");if(video)video.srcObject=stream;}
-    const audio=el("remoteAudio");if(audio)audio.srcObject=stream;
+    if(mode==="video"){const video=el("remoteVideo");if(video){video.srcObject=stream;video.play?.().catch(()=>{})}}
+    const audio=el("remoteAudio");if(audio){audio.srcObject=stream;audio.play?.().catch(()=>{})}
   };
   pc.onconnectionstatechange=()=>{
     const current=pc.connectionState;
     if(el("callState"))el("callState").textContent=current==="connected"?"Connected":current==="failed"?"Connection failed":current;
     if(current==="connected"&&!state.callStartedAt){state.callStartedAt=Date.now();clearInterval(state.callTimer);state.callTimer=setInterval(updateCallTimer,1000);}
-    if(["failed","closed","disconnected"].includes(current)&&state.rtc===pc){setTimeout(()=>{if(state.rtc===pc)cleanupCall(false)},9000)}
+    if(["failed","closed"].includes(current)&&state.rtc===pc){setTimeout(()=>{if(state.rtc===pc)cleanupCall(false)},1500)}
+  };
+  pc.oniceconnectionstatechange=()=>{
+    const ice=pc.iceConnectionState;
+    if(ice==="checking"&&el("callState"))el("callState").textContent="Finding secure connection…";
+    if(ice==="connected"&&el("callState"))el("callState").textContent="Connected";
+    if(ice==="failed"&&el("callState"))el("callState").textContent="Network could not connect";
   };
   if(mode==="video"){
-    const local=el("localVideo");if(local)local.srcObject=state.localStream;
+    const local=el("localVideo");if(local){local.srcObject=state.localStream;local.play?.().catch(()=>{})}
   }
   return pc;
 }
 
 async function startCall(mode){
   if(!state.activeFriend){showToast("Open a friend chat first.");return}
-  if(!window.isSecureContext || !navigator.mediaDevices?.getUserMedia){showToast("Calls need a secure browser connection.");return}
-  if(!state.socket || state.socket.readyState!==WebSocket.OPEN){connectSocket();showToast("Connecting to your friend…");return}
+  if(!window.isSecureContext || !navigator.mediaDevices?.getUserMedia){showToast("Calls require HTTPS and a supported browser.");return}
+  if(!state.socket || state.socket.readyState!==WebSocket.OPEN)connectSocket();
+  if(!(await waitForCallSocket())){showToast("Your chat connection is not ready. Reopen the chat and try again.");return}
   cleanupCall(false);
   try{
-    await preparePeer(mode);
     const friend=state.activeFriend;
     el("callName").textContent="@"+friend;
     el("callAvatar").textContent=friend.slice(0,2).toUpperCase();
-    el("callState").textContent=mode==="video"?"Starting video call…":"Starting voice call…";
+    el("callState").textContent=mode==="video"?"Requesting camera…":"Requesting microphone…";
     el("callPlaceholder").classList.toggle("hidden",mode==="video");
     el("callOverlay").classList.remove("hidden");
-    callSocketSend({type:"call-invite",mode});
+    await preparePeer(mode);
+    if(!callSocketSend({type:"call-invite",mode}))throw new Error("Could not send the call request.");
+    el("callState").textContent=mode==="video"?"Calling…":"Calling…";
   }catch(error){cleanupCall(false);showToast(error.message)}
 }
 
@@ -792,13 +836,18 @@ async function handleCallSignal(data){
     if(data.type==="call-offer"){
       if(!state.rtc){await preparePeer(data.mode||"audio");}
       await state.rtc.setRemoteDescription(data.sdp);
+      flushPendingIce();
       const answer=await state.rtc.createAnswer();
       await state.rtc.setLocalDescription(answer);
       callSocketSend({type:"call-answer",sdp:answer});
       return;
     }
-    if(data.type==="call-answer"&&state.rtc){await state.rtc.setRemoteDescription(data.sdp);return}
-    if(data.type==="call-ice"&&state.rtc&&data.candidate){try{await state.rtc.addIceCandidate(data.candidate)}catch{};return}
+    if(data.type==="call-answer"&&state.rtc){await state.rtc.setRemoteDescription(data.sdp);flushPendingIce();return}
+    if(data.type==="call-ice"&&data.candidate){
+      if(!state.rtc||!state.rtc.remoteDescription){state.pendingIceCandidates.push(data.candidate);return}
+      try{await state.rtc.addIceCandidate(data.candidate)}catch{}
+      return;
+    }
     if(data.type==="call-reject"){showToast("Call declined.");cleanupCall(false);return}
     if(data.type==="call-end"){cleanupCall(false);showToast("Call ended.");return}
   }catch(error){cleanupCall(false);showToast(error.message)}

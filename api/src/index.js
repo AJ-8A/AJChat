@@ -985,6 +985,11 @@ export default {
         return json(request,{username:target.username,initials:initials(target.username),profile:{bio:profile?.bio||"",status:profile?.status||"Available to chat",avatar:profile?.avatar||"✨"},stats:{followers:Number(counts?.followers||0),following:Number(counts?.following||0),posts:Number(counts?.posts||0)},following:Boolean(follow),self:Number(target.id)===Number(user.id),posts:(posts.results||[]).map(x=>({...x,id:Number(x.id),like_count:Number(x.like_count||0),comment_count:Number(x.comment_count||0),liked:Boolean(Number(x.liked))}))});
       }
 
+      if(url.pathname==="/api/social/saved" && request.method==="GET"){
+        const rows=await env.AJCHAT_DB.prepare("SELECT p.id,p.body,p.media_url,p.created_at,u.username,COALESCE(pr.avatar,'✨') AS avatar,(SELECT COUNT(*) FROM post_likes l WHERE l.post_id=p.id) AS like_count,(SELECT COUNT(*) FROM post_comments c WHERE c.post_id=p.id) AS comment_count FROM saved_posts sp JOIN posts p ON p.id=sp.post_id JOIN users u ON u.id=p.author_id LEFT JOIN profiles pr ON pr.user_id=p.author_id WHERE sp.user_id=? ORDER BY sp.created_at DESC LIMIT 50").bind(user.id).all();
+        return json(request,{posts:(rows.results||[]).map(x=>({...x,id:Number(x.id),like_count:Number(x.like_count||0),comment_count:Number(x.comment_count||0),saved:true}))});
+      }
+
       if(url.pathname==="/api/social/notifications" && request.method==="GET"){const rows=await env.AJCHAT_DB.prepare("SELECT n.id,n.type,n.body,n.created_at,n.read_at,u.username,COALESCE(p.avatar,'✨') AS avatar,n.post_id FROM notifications n LEFT JOIN users u ON u.id=n.actor_id LEFT JOIN profiles p ON p.user_id=n.actor_id WHERE n.user_id=? ORDER BY n.id DESC LIMIT 50").bind(user.id).all();return json(request,{notifications:rows.results||[]});}
       if(url.pathname==="/api/social/notifications/read" && request.method==="POST"){await env.AJCHAT_DB.prepare("UPDATE notifications SET read_at=unixepoch() WHERE user_id=? AND read_at IS NULL").bind(user.id).run();return json(request,{ok:true});}
 

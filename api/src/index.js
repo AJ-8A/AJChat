@@ -343,14 +343,17 @@ export default {
         if (!wsUser) return new Response("Unauthorized", { status: 401 });
 
         const parts = room.split(":");
-        if (parts.length !== 3 || parts[0] !== "dm") return new Response("Invalid room", { status: 400 });
-        const a = Number(parts[1]);
-        const b = Number(parts[2]);
-        if (![a, b].includes(Number(wsUser.id))) return new Response("Forbidden", { status: 403 });
+        if (room !== "global" && (parts.length !== 3 || parts[0] !== "dm")) return new Response("Invalid room", { status: 400 });
 
-        const otherId = Number(wsUser.id) === a ? b : a;
-        if (!(await isFriend(env.AJCHAT_DB, wsUser.id, otherId))) {
-          return new Response("Not friends", { status: 403 });
+        if (room.startsWith("dm:")) {
+          const a = Number(parts[1]);
+          const b = Number(parts[2]);
+          if (![a, b].includes(Number(wsUser.id))) return new Response("Forbidden", { status: 403 });
+
+          const otherId = Number(wsUser.id) === a ? b : a;
+          if (!(await isFriend(env.AJCHAT_DB, wsUser.id, otherId))) {
+            return new Response("Not friends", { status: 403 });
+          }
         }
 
         const objectId = env.CHAT_ROOMS.idFromName(room);
@@ -993,6 +996,20 @@ export default {
       if(url.pathname==="/api/social/notifications" && request.method==="GET"){const rows=await env.AJCHAT_DB.prepare("SELECT n.id,n.type,n.body,n.created_at,n.read_at,u.username,COALESCE(p.avatar,'✨') AS avatar,n.post_id FROM notifications n LEFT JOIN users u ON u.id=n.actor_id LEFT JOIN profiles p ON p.user_id=n.actor_id WHERE n.user_id=? ORDER BY n.id DESC LIMIT 50").bind(user.id).all();return json(request,{notifications:rows.results||[]});}
       if(url.pathname==="/api/social/notifications/read" && request.method==="POST"){await env.AJCHAT_DB.prepare("UPDATE notifications SET read_at=unixepoch() WHERE user_id=? AND read_at IS NULL").bind(user.id).run();return json(request,{ok:true});}
 
+      if (url.pathname === "/api/social/global/messages" && request.method === "GET") {
+        const rows=await env.AJCHAT_DB.prepare("SELECT gm.id,gm.body,gm.created_at,u.username,COALESCE(p.avatar,'✨') AS avatar FROM global_messages gm JOIN users u ON u.id=gm.sender_id LEFT JOIN profiles p ON p.user_id=gm.sender_id ORDER BY gm.id DESC LIMIT 100").all();
+        return json(request,{messages:(rows.results||[]).reverse()});
+      }
+
+      if (url.pathname === "/api/social/global/messages" && request.method === "POST") {
+        const body=await bodyJson(request);
+        const text=cleanProfileText(body.body,500);
+        if(!text)return json(request,{error:"Message cannot be empty."},400);
+        const inserted=await env.AJCHAT_DB.prepare("INSERT INTO global_messages(sender_id,body) VALUES(?,?)").bind(user.id,text).run();
+        const id=Number(inserted.meta?.last_row_id||0),createdAt=Math.floor(Date.now()/1000);
+        return json(request,{ok:true,message:{id,body:text,created_at:createdAt,username:user.username,avatar:(await ensureProfile(env.AJCHAT_DB,user.id))?.avatar||'✨'}},201);
+      }
+
       if (url.pathname === "/api/auth/change-password" && request.method === "POST") {
         const body = await bodyJson(request);
         const currentPassword = typeof body.current_password === "string" ? body.current_password : "";
@@ -1109,6 +1126,7 @@ export class ChatRoom extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
     this.env = env;
+    this.lastMessageAt = new Map();
   }
 
   async fetch(request) {
@@ -1121,8 +1139,10 @@ export class ChatRoom extends DurableObject {
     const room = new URL(request.url).searchParams.get("room") || "";
     if (!userId || !username || !room) return new Response("Unauthorized", { status: 401 });
 
-    const pair = room.split(":").slice(1).map(Number);
-    if (pair.length !== 2 || !pair.includes(userId)) return new Response("Forbidden", { status: 403 });
+    if (room !== "global") {
+      const pair = room.split(":").slice(1).map(Number);
+      if (pair.length !== 2 || !pair.includes(userId)) return new Response("Forbidden", { status: 403 });
+    }
 
     const webSocketPair = new WebSocketPair();
     const client = webSocketPair[0];
@@ -1181,25 +1201,40 @@ export class ChatRoom extends DurableObject {
     const body = cleanMessage(data.text);
     if (!body) return;
 
-    const [a, b] = attachment.room.split(":").slice(1).map(Number);
-    const recipientId = a === Number(attachment.userId) ? b : a;
+    const now = Date.now();
+    const previous = Number(this.lastMessageAt.get(Number(attachment.userId)) || 0);
+    if (now - previous < 550) {
+      try { ws.send(JSON.stringify({ type: "rate_limited", message: "Slow down a little." })); } catch {}
+      return;
+    }
+    this.lastMessageAt.set(Number(attachment.userId), now);
 
-    const inserted = await this.env.AJCHAT_DB
-      .prepare("INSERT INTO messages (room_id, sender_id, recipient_id, body) VALUES (?, ?, ?, ?)")
-      .bind(attachment.room, attachment.userId, recipientId, body)
-      .run();
-
-    const id = Number(inserted.meta?.last_row_id || 0);
-    const createdAt = Math.floor(Date.now() / 1000);
-    const payload = JSON.stringify({
-      type: "message",
-      message: {
-        id,
-        body,
-        sender: attachment.username,
-        created_at: createdAt
-      }
-    });
+    let payload;
+    if (attachment.room === "global") {
+      const inserted = await this.env.AJCHAT_DB
+        .prepare("INSERT INTO global_messages (sender_id, body) VALUES (?, ?)")
+        .bind(attachment.userId, body)
+        .run();
+      const id = Number(inserted.meta?.last_row_id || 0);
+      const createdAt = Math.floor(now / 1000);
+      payload = JSON.stringify({
+        type: "message",
+        message: { id, body, username: attachment.username, sender: attachment.username, created_at: createdAt }
+      });
+    } else {
+      const [a, b] = attachment.room.split(":").slice(1).map(Number);
+      const recipientId = a === Number(attachment.userId) ? b : a;
+      const inserted = await this.env.AJCHAT_DB
+        .prepare("INSERT INTO messages (room_id, sender_id, recipient_id, body) VALUES (?, ?, ?, ?)")
+        .bind(attachment.room, attachment.userId, recipientId, body)
+        .run();
+      const id = Number(inserted.meta?.last_row_id || 0);
+      const createdAt = Math.floor(now / 1000);
+      payload = JSON.stringify({
+        type: "message",
+        message: { id, body, sender: attachment.username, username: attachment.username, created_at: createdAt }
+      });
+    }
 
     for (const socket of this.ctx.getWebSockets()) {
       if (socket.readyState === WebSocket.OPEN) socket.send(payload);

@@ -29,7 +29,9 @@ const state = {
   callTimer: null,
   callStartedAt: 0,
   incomingCall: null,
-  notificationRegistration: null
+  notificationRegistration: null,
+  socialTab: "home",
+  socialRefreshTimer: null
 };
 
 const el = id => document.getElementById(id);
@@ -129,6 +131,125 @@ async function submitAuth(event){
 }
 
 registerNotifications();
+
+function socialDate(value){
+  if(!value)return "";
+  const d=new Date(Number(value)*1000),now=Date.now(),diff=now-d.getTime();
+  if(diff<60000)return "just now";
+  if(diff<3600000)return Math.floor(diff/60000)+"m";
+  if(diff<86400000)return Math.floor(diff/3600000)+"h";
+  return d.toLocaleDateString([], {day:"numeric",month:"short"});
+}
+function socialAvatar(item){
+  return escapeHTML(item?.avatar||item?.initials||item?.username?.slice(0,2).toUpperCase()||"AJ");
+}
+function postCard(post){
+  const liked=Boolean(post.liked),saved=Boolean(post.saved);
+  const media=post.media_url?("<a class='social-media-link' href='"+escapeHTML(post.media_url)+"' target='_blank' rel='noopener noreferrer'>View shared media ↗</a>"):"";
+  return "<article class='post-card' data-post-id='"+Number(post.id)+"'>"+
+    "<header class='post-head'><button class='social-user' data-social-user='"+escapeHTML(post.username)+"' type='button'><span class='social-avatar'>"+socialAvatar(post)+"</span><span><strong>@"+escapeHTML(post.username)+"</strong><small>"+socialDate(post.created_at)+"</small></span></button>"+
+    (post.author_id===state.me?.id||post.username===state.me?.username?"<button class='post-more' data-post-action='delete' type='button'>•••</button>":"")+"</header>"+
+    (post.body?"<div class='post-body'>"+escapeHTML(post.body).replace(/\\n/g,"<br>")+"</div>":"")+media+
+    "<footer class='post-actions'>"+
+      "<button type='button' data-post-action='like' class='"+(liked?"active":"")+"'>♡ <span>"+(Number(post.like_count||0))+"</span></button>"+
+      "<button type='button' data-post-action='comment'>◌ <span>"+(Number(post.comment_count||0))+"</span></button>"+
+      "<button type='button' data-post-action='save' class='"+(saved?"active":"")+"'>🔖</button>"+
+      "<button type='button' data-post-action='share'>↗</button>"+
+    "</footer></article>";
+}
+function socialComposer(){
+  return "<article class='create-post-card'><div class='create-post-top'><div class='social-avatar'>"+socialAvatar(state.me)+"</div><div><strong>Share something</strong><small>Post to your AJChat community</small></div></div>"+
+    "<textarea id='socialPostText' maxlength='1000' placeholder=\"What's on your mind?\"></textarea>"+
+    "<input id='socialPostMedia' type='url' maxlength='500' placeholder='Optional image/link URL'>"+
+    "<div class='create-post-actions'><span>✨ Text-first social</span><button class='primary-social' id='createPostButton' type='button'>Post</button></div></article>";
+}
+async function createSocialPost(){
+  const body=el("socialPostText")?.value.trim()||"",media=el("socialPostMedia")?.value.trim()||"";
+  if(!body&&!media){showToast("Write something first.");return}
+  try{await api("/api/social/posts",{method:"POST",body:JSON.stringify({body,media_url:media})});showToast("Posted.");await loadSocial("home")}catch(error){showToast(error.message)}
+}
+async function togglePostAction(postId,action){
+  if(action==="share"){
+    const url=location.href.split("#")[0]+"#post-"+postId;
+    try{if(navigator.share)await navigator.share({title:"AJChat post",url});else await navigator.clipboard.writeText(url);showToast("Post link copied.");}catch{}
+    return;
+  }
+  if(action==="comment"){
+    const body=prompt("Write a comment:");
+    if(!body?.trim())return;
+    try{await api("/api/social/posts/"+postId+"/comment",{method:"POST",body:JSON.stringify({body:body.trim()})});showToast("Comment added.");await loadSocial(state.socialTab)}catch(error){showToast(error.message)}
+    return;
+  }
+  if(action==="delete"&&confirm("Delete this post?")){
+    try{await api("/api/social/posts/"+postId+"/delete",{method:"POST",body:"{}"});showToast("Post deleted.");await loadSocial(state.socialTab)}catch(error){showToast(error.message)}
+    return;
+  }
+  if(action==="like"||action==="save"){
+    try{await api("/api/social/posts/"+postId+"/"+action,{method:"POST",body:"{}"});await loadSocial(state.socialTab)}catch(error){showToast(error.message)}
+  }
+}
+async function renderHomeSocial(){
+  const data=await api("/api/social/feed");
+  const stories=await api("/api/social/stories");
+  const storyCards=(stories.stories||[]).slice(0,12).map(story=>"<button class='story-card "+(story.viewed?"viewed":"")+" ' data-story-id='"+story.id+"' type='button'><span class='story-ring'><span class='social-avatar'>"+socialAvatar(story)+"</span></span><strong>@"+escapeHTML(story.username)+"</strong><small>"+socialDate(story.created_at)+"</small></button>").join("");
+  el("socialContent").innerHTML=socialComposer()+
+    "<section class='social-section'><div class='section-head'><div><span class='eyebrow'>STORIES</span><h3>Quick updates</h3></div><button class='mini-social-btn' data-social-tab='stories'>See all</button></div>"+
+    "<div class='stories-row'>"+(storyCards||"<div class='social-empty'>No active stories yet. Be the first.</div>")+"</div></section>"+
+    "<section class='social-section'><div class='section-head'><div><span class='eyebrow'>YOUR FEED</span><h3>For you</h3></div><button class='mini-social-btn' id='refreshSocialButton'>Refresh</button></div><div class='post-feed'>"+
+    ((data.posts||[]).map(postCard).join("")||"<div class='social-empty'>Follow people or add friends to grow your feed.</div>")+"</div></section>";
+}
+async function renderExploreSocial(){
+  const q=el("socialExploreInput")?.value.trim()||"";
+  const data=await api("/api/social/explore?q="+encodeURIComponent(q));
+  const people=(data.people||[]).map(person=>"<article class='explore-person'><button class='social-user' data-social-user='"+escapeHTML(person.username)+"' type='button'><span class='social-avatar'>"+socialAvatar(person)+"</span><span><strong>@"+escapeHTML(person.username)+"</strong><small>"+escapeHTML(person.bio||"AJChat member")+"</small></span></button><button class='follow-btn "+(person.following?"following":"")+"' data-follow-user='"+escapeHTML(person.username)+"' type='button'>"+(person.following?"Following":"+ Follow")+"</button></article>").join("");
+  const posts=(data.posts||[]).map(postCard).join("");
+  el("socialContent").innerHTML="<section class='explore-search'><span>⌕</span><input id='socialExploreInput' value='"+escapeHTML(q)+"' placeholder='Search people or posts'><button id='socialExploreSearch' type='button'>Search</button></section>"+
+    "<section class='social-section'><div class='section-head'><div><span class='eyebrow'>DISCOVER</span><h3>People to follow</h3></div></div><div class='people-grid'>"+(people||"<div class='social-empty'>No people found.</div>")+"</div></section>"+
+    "<section class='social-section'><div class='section-head'><div><span class='eyebrow'>EXPLORE</span><h3>Public posts</h3></div></div><div class='post-feed'>"+(posts||"<div class='social-empty'>No public posts match that search.</div>")+"</div></section>";
+  el("socialExploreSearch")?.addEventListener("click",()=>renderExploreSocial());
+  el("socialExploreInput")?.addEventListener("keydown",e=>{if(e.key==="Enter")renderExploreSocial()});
+}
+async function renderStoriesSocial(){
+  const data=await api("/api/social/stories");
+  el("socialContent").innerHTML="<article class='create-post-card story-composer'><div class='create-post-top'><div class='social-avatar'>"+socialAvatar(state.me)+"</div><div><strong>Share a story</strong><small>Stories disappear after 24 hours.</small></div></div><textarea id='storyText' maxlength='240' placeholder='What is happening?'></textarea><div class='create-post-actions'><span>24h • text story</span><button class='primary-social' id='createStoryButton' type='button'>Share story</button></div></article>"+
+    "<section class='social-section'><div class='section-head'><div><span class='eyebrow'>ACTIVE NOW</span><h3>Stories</h3></div></div><div class='story-grid'>"+((data.stories||[]).map(story=>"<article class='story-full "+(story.viewed?"viewed":"")+"'><div class='story-top'><span class='social-avatar'>"+socialAvatar(story)+"</span><div><strong>@"+escapeHTML(story.username)+"</strong><small>"+socialDate(story.created_at)+"</small></div></div><p>"+escapeHTML(story.body).replace(/\\n/g,"<br>")+"</p><button type='button' class='mini-social-btn' data-story-view='"+story.id+"'>"+(story.viewed?"Viewed":"Mark viewed")+"</button></article>").join("")||"<div class='social-empty'>No stories yet.</div>")+"</div></section>";
+  el("createStoryButton")?.addEventListener("click",async()=>{const body=el("storyText").value.trim();if(!body)return;try{await api("/api/social/stories",{method:"POST",body:JSON.stringify({body})});await loadSocial("stories");showToast("Story shared for 24 hours.");}catch(error){showToast(error.message)}});
+}
+async function renderSavedSocial(){
+  const data=await api("/api/social/saved");
+  el("socialContent").innerHTML="<section class='social-section'><div class='section-head'><div><span class='eyebrow'>BOOKMARKS</span><h3>Saved posts</h3></div></div><div class='post-feed'>"+((data.posts||[]).map(postCard).join("")||"<div class='social-empty'>Nothing saved yet.</div>")+"</div></section>";
+}
+async function renderNotificationsSocial(){
+  const data=await api("/api/social/notifications");
+  el("socialContent").innerHTML="<section class='social-section'><div class='section-head'><div><span class='eyebrow'>ACTIVITY</span><h3>Notifications</h3></div><button class='mini-social-btn' id='markSocialRead' type='button'>Mark all read</button></div><div class='notification-list'>"+((data.notifications||[]).map(item=>"<article class='social-notification "+(item.read_at?"":"unread")+"'><span class='social-avatar'>"+socialAvatar(item)+"</span><div><strong>"+escapeHTML(item.body)+"</strong><small>"+socialDate(item.created_at)+"</small></div></article>").join("")||"<div class='social-empty'>You're all caught up.</div>")+"</div></section>";
+  el("markSocialRead")?.addEventListener("click",async()=>{await api("/api/social/notifications/read",{method:"POST",body:"{}"});await renderNotificationsSocial()});
+}
+async function renderProfileSocial(username=state.me?.username){
+  const data=await api("/api/social/profile/"+encodeURIComponent(username));
+  el("socialContent").innerHTML="<section class='profile-social-head'><div class='profile-social-avatar'>"+socialAvatar(data.profile)+"</div><div class='profile-social-copy'><div><span class='eyebrow'>PROFILE</span><h3>@"+escapeHTML(data.username)+"</h3></div><p>"+escapeHTML(data.profile.bio||"No bio yet.")+"</p><span class='profile-status-pill'>"+escapeHTML(data.profile.status||"Available to chat")+"</span></div><div class='profile-social-actions'>"+(data.self?"<button class='primary-social' id='editSocialProfile'>Edit profile</button>":"<button class='follow-btn "+(data.following?"following":"")+"' data-follow-user='"+escapeHTML(data.username)+"'>"+(data.following?"Following":"Follow")+"</button>")+"</div></section>"+
+    "<div class='profile-stats'><span><strong>"+data.stats.posts+"</strong>Posts</span><span><strong>"+data.stats.followers+"</strong>Followers</span><span><strong>"+data.stats.following+"</strong>Following</span></div>"+
+    "<section class='social-section'><div class='section-head'><div><span class='eyebrow'>POSTS</span><h3>"+(data.self?"Your posts":"@"+escapeHTML(data.username)+"'s posts")+"</h3></div></div><div class='post-feed'>"+((data.posts||[]).map(postCard).join("")||"<div class='social-empty'>No posts yet.</div>")+"</div></section>";
+  el("editSocialProfile")?.addEventListener("click",()=>openProfile(state.me.username,true));
+}
+async function loadSocial(tab=state.socialTab){
+  state.socialTab=tab;
+  el("chatPanel").classList.add("hidden");el("socialPanel").classList.remove("hidden");
+  document.querySelectorAll(".social-tab").forEach(b=>b.classList.toggle("active",b.dataset.socialTab===tab));
+  const title={home:"Home feed",explore:"Explore",stories:"Stories",saved:"Saved",profile:"Your profile",notifications:"Notifications"}[tab]||"AJChat Social";
+  el("socialTitle").textContent=title;el("socialSubtitle").textContent=tab==="home"?"See what your people are sharing.":"Discover the AJChat community.";
+  el("socialContent").innerHTML="<div class='social-loading'>Loading…</div>";
+  try{
+    if(tab==="home")await renderHomeSocial();
+    else if(tab==="explore")await renderExploreSocial();
+    else if(tab==="stories")await renderStoriesSocial();
+    else if(tab==="saved")await renderSavedSocial();
+    else if(tab==="profile")await renderProfileSocial();
+    else if(tab==="notifications"){await renderNotificationsSocial();await api("/api/social/notifications/read",{method:"POST",body:"{}"}).catch(()=>{})}
+    sidebar.classList.add("closed");
+  }catch(error){el("socialContent").innerHTML="<div class='social-empty'>"+escapeHTML(error.message)+"</div>"}
+}
+function closeSocial(){el("socialPanel").classList.add("hidden");el("chatPanel").classList.remove("hidden")}
+async function followUser(username){try{await api("/api/social/follow/"+encodeURIComponent(username),{method:"POST",body:"{}"});showToast("Follow status updated.");await loadSocial(state.socialTab)}catch(error){showToast(error.message)}}
 async function boot(){
   renderAuthMode();
   el("authForm").addEventListener("submit",submitAuth);
@@ -905,6 +1026,22 @@ async function addFriend(){
   }
 }
 
+document.querySelectorAll(".social-tab").forEach(button=>button.addEventListener("click",()=>loadSocial(button.dataset.socialTab)));
+el("socialHomeButton")?.addEventListener("click",()=>loadSocial("home"));
+el("socialExploreButton")?.addEventListener("click",()=>loadSocial("explore"));
+el("socialNotifyButton")?.addEventListener("click",()=>loadSocial("notifications"));
+el("socialProfileButton")?.addEventListener("click",()=>loadSocial("profile"));
+el("socialCloseButton")?.addEventListener("click",closeSocial);
+el("socialContent")?.addEventListener("click",async event=>{
+  const postButton=event.target.closest("[data-post-action]");if(postButton){const card=postButton.closest("[data-post-id]");if(card)await togglePostAction(Number(card.dataset.postId),postButton.dataset.postAction);return}
+  const userButton=event.target.closest("[data-social-user]");if(userButton){await renderProfileSocial(userButton.dataset.socialUser);return}
+  const followButton=event.target.closest("[data-follow-user]");if(followButton){await followUser(followButton.dataset.followUser);return}
+  const storyButton=event.target.closest("[data-story-view]");if(storyButton){await api("/api/social/stories/"+storyButton.dataset.storyView+"/view",{method:"POST",body:"{}"});showToast("Story marked viewed.");return}
+  const storyOpen=event.target.closest("[data-story-id]");if(storyOpen){await loadSocial("stories");return}
+  const tabButton=event.target.closest("[data-social-tab]");if(tabButton)await loadSocial(tabButton.dataset.socialTab);
+  if(event.target.id==="createPostButton")await createSocialPost();
+  if(event.target.id==="refreshSocialButton")await loadSocial(state.socialTab);
+});
 el("composer").addEventListener("submit",event=>{event.preventDefault();sendMessage()});
 el("newChatButton").addEventListener("click",addFriend);
 el("newGroupButton")?.addEventListener("click",createGroup);

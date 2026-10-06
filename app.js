@@ -11,6 +11,8 @@ const state = {
   activeGroup: null,
   currentFilter: "all",
   socket: null,
+  callSocket: null,
+  callSocketRetry: 0,
   pollTimer: null,
   groupPollTimer: null,
   messages: [],
@@ -30,6 +32,7 @@ const state = {
   callStartedAt: 0,
   incomingCall: null,
   pendingIceCandidates: [],
+  callPeerId: null,
   notificationRegistration: null,
   socialTab: "home",
   socialRefreshTimer: null,
@@ -373,6 +376,7 @@ async function boot(){
   try{
     state.me=await api("/api/me");
     showAuth(false);
+    connectCallSocket();
     startPresence();
     startFriendRefresh();
     startFriendRequestRefresh();
@@ -685,18 +689,46 @@ async function selectGroup(groupId){
 
 
 function callSocketSend(payload){
-  if(state.socket && state.socket.readyState===WebSocket.OPEN){
-    try{state.socket.send(JSON.stringify(payload));return true}catch{}
+  if(state.callSocket && state.callSocket.readyState===WebSocket.OPEN){
+    try{state.callSocket.send(JSON.stringify(payload));return true}catch{}
   }
   return false;
 }
+function closeCallSocket(){
+  if(state.callSocket){try{state.callSocket.close()}catch{}}
+  state.callSocket=null;
+}
+function connectCallSocket(){
+  if(!state.token)return;
+  if(state.callSocket?.readyState===WebSocket.OPEN || state.callSocket?.readyState===WebSocket.CONNECTING)return;
+  const socket=new WebSocket(WS_BASE+"/ws?room=calls&token="+encodeURIComponent(state.token));
+  state.callSocket=socket;
+  socket.onopen=()=>{if(state.callSocket===socket)state.callSocketRetry=0};
+  socket.onmessage=event=>{
+    if(state.callSocket!==socket)return;
+    try{
+      const data=JSON.parse(event.data);
+      if(["call-invite","call-accept","call-offer","call-answer","call-ice","call-end","call-reject"].includes(data.type))handleCallSignal(data);
+    }catch{}
+  };
+  socket.onclose=()=>{
+    if(state.callSocket!==socket)return;
+    state.callSocket=null;
+    if(state.token){
+      const delay=Math.min(1200*Math.max(1,state.callSocketRetry+1),7000);
+      state.callSocketRetry++;
+      setTimeout(()=>{if(state.token)connectCallSocket()},delay);
+    }
+  };
+}
 function waitForCallSocket(timeout=7000){
-  if(state.socket?.readyState===WebSocket.OPEN)return Promise.resolve(true);
-  if(!state.activeFriend)return Promise.resolve(false);
+  if(state.callSocket?.readyState===WebSocket.OPEN)return Promise.resolve(true);
+  if(!state.token)return Promise.resolve(false);
+  connectCallSocket();
   return new Promise(resolve=>{
     const started=Date.now();
     const timer=setInterval(()=>{
-      if(state.socket?.readyState===WebSocket.OPEN){clearInterval(timer);resolve(true);return}
+      if(state.callSocket?.readyState===WebSocket.OPEN){clearInterval(timer);resolve(true);return}
       if(Date.now()-started>=timeout){clearInterval(timer);resolve(false)}
     },120);
   });
@@ -724,7 +756,7 @@ function cleanupCall(sendEnd=false){
   state.localStream?.getTracks().forEach(track=>track.stop());
   state.localStream=null;
   state.pendingIceCandidates=[];
-  state.callMode=null;state.callPeer=null;state.incomingCall=null;
+  state.callMode=null;state.callPeer=null;state.callPeerId=null;state.incomingCall=null;
   resetCallUI();
 }
 
@@ -737,7 +769,7 @@ function updateCallTimer(){
 }
 
 async function preparePeer(mode){
-  if(!state.socket || state.socket.readyState!==WebSocket.OPEN) throw new Error("Chat connection is not ready.");
+  if(!state.callSocket || state.callSocket.readyState!==WebSocket.OPEN) throw new Error("Call connection is not ready.");
   state.callMode=mode;
   state.pendingIceCandidates=[];
   let stream;
@@ -765,7 +797,7 @@ async function preparePeer(mode){
   const pc=new RTCPeerConnection({iceServers});
   state.rtc=pc;
   state.localStream.getTracks().forEach(track=>pc.addTrack(track,state.localStream));
-  pc.onicecandidate=e=>{if(e.candidate)callSocketSend({type:"call-ice",candidate:e.candidate})};
+  pc.onicecandidate=e=>{if(e.candidate&&state.callPeerId)callSocketSend({type:"call-ice",candidate:e.candidate,to_user_id:state.callPeerId})};
   pc.ontrack=e=>{
     const stream=e.streams[0];
     if(mode==="video"){const video=el("remoteVideo");if(video){video.srcObject=stream;video.play?.().catch(()=>{})}}
@@ -792,19 +824,22 @@ async function preparePeer(mode){
 async function startCall(mode){
   if(!state.activeFriend){showToast("Open a friend chat first.");return}
   if(!window.isSecureContext || !navigator.mediaDevices?.getUserMedia){showToast("Calls require HTTPS and a supported browser.");return}
-  if(!state.socket || state.socket.readyState!==WebSocket.OPEN)connectSocket();
-  if(!(await waitForCallSocket())){showToast("Your chat connection is not ready. Reopen the chat and try again.");return}
+  const friend=state.friends.find(item=>item.username===state.activeFriend);
+  const targetId=Number(friend?.user_id||0);
+  if(!targetId){showToast("Friend details are not loaded yet.");return}
+  if(!(await waitForCallSocket())){showToast("Call connection is not ready. Please try again.");return}
   cleanupCall(false);
   try{
-    const friend=state.activeFriend;
-    el("callName").textContent="@"+friend;
-    el("callAvatar").textContent=friend.slice(0,2).toUpperCase();
+    state.callPeer=state.activeFriend;
+    state.callPeerId=targetId;
+    el("callName").textContent="@"+state.activeFriend;
+    el("callAvatar").textContent=state.activeFriend.slice(0,2).toUpperCase();
     el("callState").textContent=mode==="video"?"Requesting camera…":"Requesting microphone…";
     el("callPlaceholder").classList.toggle("hidden",mode==="video");
     el("callOverlay").classList.remove("hidden");
     await preparePeer(mode);
-    if(!callSocketSend({type:"call-invite",mode}))throw new Error("Could not send the call request.");
-    el("callState").textContent=mode==="video"?"Calling…":"Calling…";
+    if(!callSocketSend({type:"call-invite",mode,to_user_id:targetId}))throw new Error("Could not send the call request.");
+    el("callState").textContent="Calling…";
   }catch(error){cleanupCall(false);showToast(error.message)}
 }
 
@@ -812,30 +847,33 @@ async function acceptIncomingCall(){
   const pending=state.incomingCall;if(!pending)return;
   el("incomingCallOverlay")?.classList.add("hidden");
   try{
-    await preparePeer(pending.mode);
+    if(!(await waitForCallSocket()))throw new Error("Call connection is not ready.");
     state.callPeer=pending.username;
+    state.callPeerId=Number(pending.userId||pending.from_user_id||0);
+    await preparePeer(pending.mode);
     el("callName").textContent="@"+pending.username;
     el("callAvatar").textContent=pending.username.slice(0,2).toUpperCase();
     el("callState").textContent=pending.mode==="video"?"Connecting video…":"Connecting voice…";
     el("callPlaceholder").classList.toggle("hidden",pending.mode==="video");
     el("callOverlay").classList.remove("hidden");
-    callSocketSend({type:"call-accept",mode:pending.mode});
+    callSocketSend({type:"call-accept",mode:pending.mode,to_user_id:state.callPeerId});
   }catch(error){cleanupCall(false);showToast(error.message)}
 }
 
 async function handleCallSignal(data){
   try{
     if(data.type==="call-invite"){
-      state.incomingCall={username:data.username,mode:data.mode||"audio"};
+      state.incomingCall={username:data.username,userId:Number(data.from_user_id||0),mode:data.mode||"audio"};
       el("incomingCallName").textContent="@"+data.username;
       el("incomingCallMode").textContent=data.mode==="video"?"Incoming video call":"Incoming voice call";
       el("incomingCallOverlay").classList.remove("hidden");
       return;
     }
     if(data.type==="call-accept" && state.rtc){
+      state.callPeer=data.username||state.callPeer;
       const offer=await state.rtc.createOffer();
       await state.rtc.setLocalDescription(offer);
-      callSocketSend({type:"call-offer",mode:state.callMode,sdp:offer});
+      callSocketSend({type:"call-offer",mode:state.callMode,sdp:offer,to_user_id:state.callPeerId});
       return;
     }
     if(data.type==="call-offer"){
@@ -844,7 +882,7 @@ async function handleCallSignal(data){
       flushPendingIce();
       const answer=await state.rtc.createAnswer();
       await state.rtc.setLocalDescription(answer);
-      callSocketSend({type:"call-answer",sdp:answer});
+      callSocketSend({type:"call-answer",sdp:answer,to_user_id:state.callPeerId});
       return;
     }
     if(data.type==="call-answer"&&state.rtc){await state.rtc.setRemoteDescription(data.sdp);flushPendingIce();return}
@@ -1227,7 +1265,7 @@ el("notifyButton")?.addEventListener("click",ensureNotifications);
 el("audioCallButton")?.addEventListener("click",()=>startCall("audio"));
 el("videoCallButton")?.addEventListener("click",()=>startCall("video"));
 el("acceptCallButton")?.addEventListener("click",acceptIncomingCall);
-el("rejectCallButton")?.addEventListener("click",()=>{callSocketSend({type:"call-reject"});cleanupCall(false)});
+el("rejectCallButton")?.addEventListener("click",()=>{callSocketSend({type:"call-reject",to_user_id:Number(state.callPeerId||state.incomingCall?.userId||0)});cleanupCall(false)});
 el("callEndButton")?.addEventListener("click",()=>cleanupCall(true));
 el("callMuteButton")?.addEventListener("click",()=>{
   const track=state.localStream?.getAudioTracks()[0];if(!track)return;

@@ -1954,3 +1954,92 @@ body{
     animation:none;
   }
 }
+
+
+/* =========================================
+   AJCHAT PRO PHONE MODE
+   ========================================= */
+@media (max-width: 760px){
+  html,body{width:100%;min-width:0;max-width:100%;height:100%;min-height:100%;overflow:hidden}
+  body{padding:0;overscroll-behavior:none}
+  .app-shell,.messenger{width:100vw;max-width:none;height:100dvh;min-height:100svh;margin:0;border-radius:0}
+  .messenger{border:0;box-shadow:none;overflow:hidden}
+  .sidebar{width:100%;max-width:none;min-width:0;height:100%;border-right:0;border-radius:0;padding:max(8px,env(safe-area-inset-top)) 9px max(8px,env(safe-area-inset-bottom));transition:transform .24s cubic-bezier(.22,.75,.25,1),opacity .2s ease}
+  .sidebar-top{gap:8px;padding:5px 2px 10px}
+  .brand{min-width:0;flex:1 1 auto}
+  .brand-mark{flex:0 0 40px;width:40px;height:40px}
+  .brand strong,.brand span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sidebar-actions{flex:0 0 auto;gap:6px}
+  .sidebar-actions .icon-button{width:42px;min-width:42px;height:42px;min-height:42px}
+  .search-wrap{padding:3px 0 9px}
+  .search-box{min-height:46px}
+  .filter-pills{gap:7px;overflow-x:auto;scrollbar-width:none;padding-bottom:5px}
+  .filter-pills::-webkit-scrollbar{display:none}
+  .filter-pill{flex:0 0 auto;min-height:40px;padding:0 16px}
+  .notification-prompt{margin:8px 0 10px;padding:13px;border-radius:18px;gap:10px}
+  .notification-prompt-copy{min-width:0}
+  .notification-prompt-copy span{line-height:1.35}
+  .notification-prompt-button{min-width:88px;min-height:42px}
+  .friend-requests{max-height:31vh;overflow:auto;-webkit-overflow-scrolling:touch}
+  .chat-list{min-height:0;padding-bottom:10px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .chat-item{min-height:68px;border-radius:18px;padding:9px 10px;margin-bottom:5px}
+  .chat-item .avatar{width:46px;height:46px;min-width:46px}
+  .chat-panel{inset:0;width:100%;height:100dvh;min-height:100svh;border-radius:0}
+  .chat-header{min-height:66px;padding:max(7px,env(safe-area-inset-top)) 8px 7px;gap:7px}
+  .chat-person{min-width:0;flex:1 1 auto}
+  .chat-person>div:last-child{min-width:0}
+  #chatName,#chatStatus{display:block;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .chat-actions{flex:0 0 auto;gap:5px}
+  .chat-actions .icon-button,#backButton{width:42px!important;min-width:42px!important;height:42px!important;min-height:42px!important}
+  .chat-scene{padding:6px 8px 4px}
+  .messages{padding:10px 1px 16px}
+  .message-row{max-width:92%;margin-bottom:8px}
+  .message-bubble{max-width:100%;padding:10px 12px;border-radius:17px;font-size:15px;line-height:1.38;overflow-wrap:anywhere}
+  .composer{gap:7px;padding:7px 8px max(8px,env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(5,10,8,.72),rgba(5,10,8,.98))}
+  .composer>.icon-button{width:44px;min-width:44px;height:44px;min-height:44px}
+  .composer input{height:46px;min-width:0;font-size:16px;border-radius:16px}
+  .send-button{width:46px!important;min-width:46px!important;height:46px!important;border-radius:15px}
+  .reply-bar{padding:8px 10px;gap:8px}
+  .social-panel{inset:0;width:100%;height:100dvh;min-height:100svh;padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom));border:0;border-radius:0;overflow:hidden}
+  .social-header{padding:8px 3px 11px;gap:8px}
+  .social-header h2{font-size:23px;margin:2px 0 3px}
+  .social-header p{max-width:72vw;font-size:13px}
+  .social-content{min-height:0;height:calc(100dvh - 88px);overflow-y:auto;padding:0 1px calc(14px + env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+  .social-content>*{width:100%;max-width:none}
+  .follow-by-username,.create-post-card,.post-card,.social-section,.global-chat-shell,.profile-social-head,.profile-stats{border-radius:19px}
+  .follow-by-username{padding:14px}
+  .follow-by-username-form{grid-template-columns:26px minmax(0,1fr) auto}
+  .follow-by-username-form input{min-width:0;font-size:16px}
+  .people-grid{grid-template-columns:1fr!important;gap:8px}
+  .explore-search{grid-template-columns:1fr auto;min-height:46px}
+  .explore-search span{display:none}
+  .explore-search input{min-width:0;font-size:16px}
+  .explore-search button,.follow-by-username-form button,.primary-social,.mini-social-btn{min-height:42px}
+  .post-actions{gap:5px;overflow-x:auto;scrollbar-width:none}
+  .post-actions::-webkit-scrollbar{display:none}
+  .post-actions button{flex:0 0 auto;min-height:40px}
+  .global-chat-shell{display:flex;flex-direction:column;height:100%;min-height:0}
+  .global-chat-head{flex:0 0 auto;padding:13px 12px 10px}
+  .global-messages{flex:1 1 auto;min-height:0;padding:10px 9px}
+  .global-message{max-width:95%}
+  .global-composer{flex:0 0 auto;gap:7px;padding:8px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+  .global-composer input{min-width:0;height:46px;font-size:16px}
+  .global-composer button{min-width:74px;height:46px}
+  .profile-social-head{display:grid;grid-template-columns:auto 1fr;gap:12px}
+  .profile-social-actions{grid-column:1/-1}
+  .profile-social-buttons{width:100%;display:grid;grid-template-columns:1fr 1fr}
+  .call-overlay,.incoming-call-overlay{padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom))}
+  .call-card,.incoming-call-card{width:100%;max-width:520px;border-radius:24px;margin:auto}
+  .call-videos{min-height:58vh}
+  .local-stage{width:30vw!important;max-width:150px;height:auto!important;aspect-ratio:3/4}
+  .call-controls{padding-bottom:2px}
+  .call-control{width:52px;height:52px}
+}
+@media (max-width:390px){
+  .brand-mark{width:38px;min-width:38px;height:38px}
+  .sidebar-actions .icon-button{width:39px;min-width:39px;height:39px;min-height:39px}
+  .chat-actions .icon-button,#backButton{width:39px!important;min-width:39px!important;height:39px!important;min-height:39px!important}
+  #chatName,#chatStatus{max-width:27vw}
+  .notification-prompt{padding:11px}
+  .notification-prompt-button{min-width:78px}
+}

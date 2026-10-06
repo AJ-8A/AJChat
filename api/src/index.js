@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { sendPushNotification } from "@mmmike/web-push/send";
 
 const enc = new TextEncoder();
 
@@ -374,6 +375,31 @@ export default {
 
       if (!user) {
         return json(request, { error: "Authentication required." }, 401);
+      }
+
+      if (url.pathname === "/api/push/config" && request.method === "GET") {
+        const publicKey = typeof env.VAPID_PUBLIC_KEY === "string" ? env.VAPID_PUBLIC_KEY.trim() : "";
+        return json(request, { enabled: Boolean(publicKey), publicKey });
+      }
+
+      if (url.pathname === "/api/push/subscribe" && request.method === "POST") {
+        const body = await bodyJson(request);
+        const endpoint = typeof body.endpoint === "string" ? body.endpoint.trim().slice(0, 2000) : "";
+        const p256dh = typeof body.keys?.p256dh === "string" ? body.keys.p256dh.trim().slice(0, 500) : "";
+        const auth = typeof body.keys?.auth === "string" ? body.keys.auth.trim().slice(0, 500) : "";
+        if (!endpoint || !p256dh || !auth) return json(request, { error: "Invalid push subscription." }, 400);
+        await env.AJCHAT_DB.prepare(
+          "INSERT INTO push_subscriptions(user_id,endpoint,p256dh,auth,updated_at) VALUES(?,?,?,?,unixepoch()) " +
+          "ON CONFLICT(endpoint) DO UPDATE SET user_id=excluded.user_id,p256dh=excluded.p256dh,auth=excluded.auth,updated_at=unixepoch()"
+        ).bind(user.id, endpoint, p256dh, auth).run();
+        return json(request, { ok: true });
+      }
+
+      if (url.pathname === "/api/push/subscribe" && request.method === "DELETE") {
+        const body = await bodyJson(request);
+        const endpoint = typeof body.endpoint === "string" ? body.endpoint.trim() : "";
+        if (endpoint) await env.AJCHAT_DB.prepare("DELETE FROM push_subscriptions WHERE endpoint=? AND user_id=?").bind(endpoint, user.id).run();
+        return json(request, { ok: true });
       }
 
       if (url.pathname === "/api/call/ice" && request.method === "GET") {

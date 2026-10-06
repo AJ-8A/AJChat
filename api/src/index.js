@@ -921,7 +921,7 @@ export default {
 
       const socialFollowMatch = url.pathname.match(/^\/api\/social\/follow\/([^/]+)$/);
       if (socialFollowMatch && request.method === "POST") {
-        const username = decodeURIComponent(socialFollowMatch[1]);
+        const username = cleanUsername(decodeURIComponent(socialFollowMatch[1]));
         const target = await env.AJCHAT_DB.prepare("SELECT id, username FROM users WHERE username = ? COLLATE NOCASE").bind(username).first();
         if (!target) return json(request,{error:"User not found."},404);
         if (Number(target.id) === Number(user.id)) return json(request,{error:"You cannot follow yourself."},400);

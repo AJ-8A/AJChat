@@ -115,6 +115,8 @@ async function submitAuth(event){
     setAuthMessage("");
     showToast(state.mode==="register"?"Account created. You're in.":"You're in.");
 
+    refreshNotificationPrompt();
+    syncPushSubscription().catch(()=>{});
     startPresence();
     startFriendRefresh();
     startFriendRequestRefresh();
@@ -376,6 +378,8 @@ async function boot(){
   try{
     state.me=await api("/api/me");
     showAuth(false);
+    refreshNotificationPrompt();
+    syncPushSubscription().catch(()=>{});
     connectCallSocket();
     startPresence();
     startFriendRefresh();
@@ -920,10 +924,51 @@ async function messageAction(message,action,payload={}){
     await reloadActiveChat();
   }catch(error){showToast(error.message)}
 }
+function refreshNotificationPrompt(){
+  const card=el("notificationPrompt");
+  const button=el("enableNotificationsButton");
+  if(!card)return;
+  const supported=("Notification" in window) && ("serviceWorker" in navigator);
+  const permission=supported?Notification.permission:"unsupported";
+  card.classList.toggle("hidden",permission!=="default"||!state.token);
+  if(button)button.disabled=!supported;
+  if(permission==="denied"&&button)button.textContent="Blocked in browser";
+  if(permission==="granted"&&button)button.textContent="Notifications enabled";
+}
+
+function urlBase64ToUint8Array(base64){
+  const padding="=".repeat((4-base64.length%4)%4);
+  const raw=atob((base64+padding).replace(/-/g,"+").replace(/_/g,"/"));
+  return Uint8Array.from([...raw].map(char=>char.charCodeAt(0)));
+}
+
 async function registerNotifications(){
   if(!("serviceWorker" in navigator))return null;
-  try{state.notificationRegistration=await navigator.serviceWorker.register("./sw.js",{scope:"./"});return state.notificationRegistration}catch{return null}
+  try{
+    state.notificationRegistration=await navigator.serviceWorker.register("./sw.js",{scope:"./"});
+    return state.notificationRegistration;
+  }catch{return null}
 }
+
+async function syncPushSubscription(){
+  if(!state.token || !("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window))return false;
+  if(Notification.permission!=="granted")return false;
+  const registration=state.notificationRegistration||(await registerNotifications());
+  if(!registration) return false;
+  const config=await api("/api/push/config");
+  if(!config.enabled || !config.publicKey)return false;
+  let subscription=await registration.pushManager.getSubscription();
+  if(!subscription){
+    subscription=await registration.pushManager.subscribe({
+      userVisibleOnly:true,
+      applicationServerKey:urlBase64ToUint8Array(config.publicKey)
+    });
+  }
+  const payload=subscription.toJSON?subscription.toJSON():JSON.parse(JSON.stringify(subscription));
+  await api("/api/push/subscribe",{method:"POST",body:JSON.stringify(payload)});
+  return true;
+}
+
 async function notifyIncoming(message){
   if(!state.notifications || !message || message.sender===state.me?.username) return;
   if(!("Notification" in window) || Notification.permission!=="granted") return;
@@ -942,14 +987,26 @@ async function notifyIncoming(message){
     }
   }catch{}
 }
+
 async function ensureNotifications(){
   if(!("Notification" in window)){showToast("This phone/browser does not support notifications.");return}
-  if(Notification.permission==="denied"){showToast("Notifications are blocked in browser settings.");return}
+  if(Notification.permission==="denied"){showToast("Notifications are blocked in browser settings.");refreshNotificationPrompt();return}
   await registerNotifications();
   const p=Notification.permission==="granted"?"granted":await Notification.requestPermission();
-  state.notifications=p==="granted";localStorage.setItem("ajchat_notifications",state.notifications?"on":"off");
+  state.notifications=p==="granted";
+  localStorage.setItem("ajchat_notifications",state.notifications?"on":"off");
   if(el("notifyButton"))el("notifyButton").textContent=state.notifications?"♢":"○";
-  showToast(state.notifications?"Phone notifications enabled.":"Notifications disabled.");
+  refreshNotificationPrompt();
+  if(state.notifications){
+    try{
+      await syncPushSubscription();
+      showToast("Phone notifications enabled.");
+    }catch(error){
+      showToast(error.message||"Notification setup needs another try.");
+    }
+  }else{
+    showToast("Notifications disabled.");
+  }
 }
 async function openProfile(username,editable){
   try{
@@ -1230,6 +1287,8 @@ async function addFriend(){
 
 document.querySelectorAll(".social-tab").forEach(button=>button.addEventListener("click",()=>loadSocial(button.dataset.socialTab)));
 el("socialHomeButton")?.addEventListener("click",()=>loadSocial("home"));
+el("globalChatButton")?.addEventListener("click",()=>loadSocial("global"));
+el("enableNotificationsButton")?.addEventListener("click",ensureNotifications);
 el("socialExploreButton")?.addEventListener("click",()=>loadSocial("explore"));
 el("socialNotifyButton")?.addEventListener("click",()=>loadSocial("notifications"));
 el("socialProfileButton")?.addEventListener("click",()=>loadSocial("profile"));

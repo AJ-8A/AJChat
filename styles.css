@@ -1664,3 +1664,129 @@ body{
   .send-button,.auth-submit,.primary-social,.notification-prompt-button,
   .icon-button,.filter-pill,.global-entry{transition:none !important}
 }
+
+
+/* =========================
+   MOBILE-FIRST PERFORMANCE MOTION
+   ========================= */
+@media (max-width:760px){
+  /* Keep phone motion subtle and GPU-friendly. */
+  .messenger{
+    animation:mobileShellIn .38s cubic-bezier(.22,.75,.25,1) both;
+    will-change:transform,opacity;
+  }
+
+  .chat-item{
+    animation:mobileChatIn .26s cubic-bezier(.22,.75,.25,1) both;
+    will-change:transform,opacity;
+  }
+
+  .message-row,
+  .message-row.me,
+  .global-message{
+    animation:mobileMessageIn .24s cubic-bezier(.22,.75,.25,1) both;
+    will-change:transform,opacity;
+  }
+
+  .global-entry,
+  .notification-prompt{
+    animation:mobilePanelIn .3s cubic-bezier(.22,.75,.25,1) both;
+    will-change:transform,opacity;
+  }
+
+  /* No hover movement on touchscreens. */
+  .global-entry:hover,
+  .chat-item:hover,
+  .send-button:hover,
+  .notification-prompt-button:hover{
+    transform:none;
+    filter:none;
+  }
+
+  .icon-button,
+  .filter-pill,
+  .global-entry,
+  .send-button,
+  .notification-prompt-button{
+    -webkit-tap-highlight-color:transparent;
+    touch-action:manipulation;
+  }
+
+  /* Fast tactile press instead of large hover effects. */
+  .icon-button:active,
+  .filter-pill:active,
+  .global-entry:active,
+  .send-button:active,
+  .notification-prompt-button:active{
+    transform:scale(.96);
+    transition:transform .08s ease;
+  }
+
+  /* Remove expensive decorative motion from small screens. */
+  .global-entry-icon::after,
+  .global-chat-head::before,
+  .chat-header::after{
+    animation:none;
+  }
+
+  .global-only-dot{
+    animation:mobilePulse 2.2s ease-in-out infinite;
+  }
+}
+
+@keyframes mobileShellIn{
+  from{opacity:0;transform:translate3d(0,8px,0)}
+  to{opacity:1;transform:translate3d(0,0,0)}
+}
+@keyframes mobileChatIn{
+  from{opacity:0;transform:translate3d(-5px,0,0)}
+  to{opacity:1;transform:translate3d(0,0,0)}
+}
+@keyframes mobileMessageIn{
+  from{opacity:0;transform:translate3d(0,5px,0)}
+  to{opacity:1;transform:translate3d(0,0,0)}
+}
+@keyframes mobilePanelIn{
+  from{opacity:0;transform:translate3d(0,7px,0)}
+  to{opacity:1;transform:translate3d(0,0,0)}
+}
+@keyframes mobilePulse{
+  0%,100%{opacity:.55;transform:scale(.9)}
+  50%{opacity:1;transform:scale(1.08)}
+}
+
+@media (max-width:390px){
+  .chat-item,
+  .message-row,
+  .message-row.me,
+  .global-message{
+    animation-duration:.20s;
+  }
+
+  .sidebar .global-entry,
+  .sidebar .notification-prompt{
+    animation-duration:.24s;
+  }
+
+  .global-entry-icon{
+    box-shadow:0 6px 14px rgba(201,168,102,.14);
+  }
+
+  .send-button{
+    box-shadow:0 7px 18px rgba(201,168,102,.14);
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .messenger,
+  .chat-item,
+  .message-row,
+  .message-row.me,
+  .global-message,
+  .global-entry,
+  .notification-prompt,
+  .global-only-dot{
+    animation:none !important;
+    will-change:auto !important;
+  }
+}

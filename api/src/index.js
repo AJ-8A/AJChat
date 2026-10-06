@@ -570,6 +570,12 @@ export default {
           requestId = Number(inserted.meta?.last_row_id || 0);
         }
 
+        await pushNotifyUser(env, friend.id, {
+          title: "New friend request",
+          body: "@" + user.username + " sent you a friend request.",
+          url: "/AJChat/",
+          tag: "friend-request-" + requestId
+        }).catch(() => {});
         return json(request, { ok: true, status: "pending", request_id: requestId, to: friend.username }, 201);
       }
 
@@ -839,6 +845,12 @@ export default {
           env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO friendships (user_id, friend_id) VALUES (?, ?)").bind(user.id, friendRequest.sender_id),
           env.AJCHAT_DB.prepare("INSERT OR IGNORE INTO friendships (user_id, friend_id) VALUES (?, ?)").bind(friendRequest.sender_id, user.id)
         ]);
+        await pushNotifyUser(env, friendRequest.sender_id, {
+          title: "Friend request accepted",
+          body: "@" + user.username + " accepted your friend request.",
+          url: "/AJChat/",
+          tag: "friend-accepted-" + requestId
+        }).catch(() => {});
 
         const acceptedFriend = await env.AJCHAT_DB
           .prepare("SELECT id, username FROM users WHERE id = ?")
@@ -991,6 +1003,12 @@ export default {
         if(existing){await env.AJCHAT_DB.prepare("DELETE FROM follows WHERE follower_id=? AND following_id=?").bind(user.id,target.id).run();return json(request,{ok:true,following:false,username:target.username});}
         await env.AJCHAT_DB.prepare("INSERT INTO follows (follower_id, following_id) VALUES (?,?)").bind(user.id,target.id).run();
         await socialNotify(env.AJCHAT_DB,{userId:target.id,actorId:user.id,type:"follow",body:"@"+user.username+" followed you."});
+        await pushNotifyUser(env, target.id, {
+          title: "New follower",
+          body: "@" + user.username + " followed you.",
+          url: "/AJChat/",
+          tag: "follow-" + user.id
+        }).catch(() => {});
         return json(request,{ok:true,following:true,username:target.username});
       }
 

@@ -1069,3 +1069,363 @@ body.light-mode .social-panel{background:linear-gradient(180deg,#f5f8f7,#eef4f2)
     display:none;
   }
 }
+
+
+/* =========================
+   AJCHAT BUSINESS CLASS UI
+   ========================= */
+:root{
+  --bg:#050908;
+  --bg-deep:#020403;
+  --panel:rgba(12,17,15,.84);
+  --panel-2:rgba(255,255,255,.045);
+  --panel-3:rgba(255,255,255,.075);
+  --border:rgba(240,215,155,.10);
+  --border-strong:rgba(240,215,155,.19);
+  --text:#f4f1e8;
+  --muted:#a6aaa2;
+  --muted-2:#72786f;
+  --accent:#c9a866;
+  --accent-2:#f0d79b;
+  --bubble-me:#183a31;
+  --bubble-them:rgba(20,24,21,.94);
+  --shadow:0 34px 100px rgba(0,0,0,.48);
+  --radius:28px;
+}
+
+body{
+  background:
+    radial-gradient(circle at 10% 8%,rgba(201,168,102,.10),transparent 25%),
+    radial-gradient(circle at 88% 18%,rgba(60,120,105,.10),transparent 27%),
+    radial-gradient(circle at 78% 90%,rgba(201,168,102,.07),transparent 24%),
+    linear-gradient(145deg,#020403 0%,#07100d 48%,#020504 100%);
+}
+
+.ambient-one{background:rgba(201,168,102,.10);opacity:.52}
+.ambient-two{background:rgba(58,122,105,.10);opacity:.46}
+
+.app-shell{padding:22px}
+.messenger{
+  width:min(1580px,100%);
+  height:min(940px,calc(100vh - 44px));
+  border:1px solid rgba(240,215,155,.15);
+  border-radius:30px;
+  background:linear-gradient(145deg,rgba(13,19,16,.90),rgba(4,8,6,.87));
+  box-shadow:0 42px 120px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,255,255,.055);
+  backdrop-filter:blur(30px) saturate(125%);
+}
+
+.sidebar{
+  background:linear-gradient(180deg,rgba(10,15,13,.96),rgba(5,9,7,.94));
+  border-right:1px solid rgba(240,215,155,.09);
+}
+.sidebar-top,.chat-header{
+  min-height:82px;
+  border-bottom:1px solid rgba(240,215,155,.08);
+}
+.brand-mark,.avatar{
+  background:linear-gradient(145deg,#f2dc9e,#b68c45);
+  color:#151108;
+  box-shadow:0 10px 28px rgba(201,168,102,.20);
+}
+.brand strong{letter-spacing:.025em}
+.brand span{color:#868d83}
+
+.sidebar-actions,.chat-actions{gap:7px}
+.icon-button{
+  border:1px solid transparent;
+  border-radius:13px;
+  color:#969b93;
+}
+.icon-button:hover{
+  background:linear-gradient(145deg,rgba(240,215,155,.09),rgba(255,255,255,.035));
+  border-color:rgba(240,215,155,.14);
+  color:var(--accent-2);
+}
+.search-box{
+  border-color:rgba(240,215,155,.09);
+  background:rgba(255,255,255,.026);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.02);
+}
+.search-box:focus-within{
+  border-color:rgba(240,215,155,.26);
+  box-shadow:0 0 0 4px rgba(201,168,102,.045),0 10px 30px rgba(0,0,0,.16);
+}
+.filter-pill{
+  border-color:rgba(240,215,155,.08);
+}
+.filter-pill:hover,.filter-pill.active{
+  color:#f5e4b8;
+  background:rgba(201,168,102,.10);
+  border-color:rgba(240,215,155,.22);
+}
+
+.online-strip{
+  border-color:rgba(201,168,102,.14);
+  background:linear-gradient(135deg,rgba(201,168,102,.07),rgba(255,255,255,.018));
+}
+.online-heading span{
+  background:rgba(201,168,102,.11);
+  color:var(--accent-2);
+}
+.online-avatar{border-color:#070c09}
+.online-avatar-face{
+  background:linear-gradient(145deg,#e6d9b7,#8f774b);
+}
+.online-avatar i{
+  background:#67b69b;
+  border-color:#070c09;
+  box-shadow:0 0 10px rgba(103,182,155,.55);
+}
+
+.chat-list{padding:7px 9px 12px}
+.chat-item{
+  border-color:transparent;
+  transition:transform .22s ease,background .22s ease,border-color .22s ease,box-shadow .22s ease;
+}
+.chat-item:hover{
+  background:linear-gradient(100deg,rgba(255,255,255,.045),rgba(201,168,102,.035));
+  border-color:rgba(240,215,155,.08);
+  box-shadow:0 10px 30px rgba(0,0,0,.10);
+}
+.chat-item.active{
+  background:linear-gradient(100deg,rgba(201,168,102,.12),rgba(255,255,255,.025));
+  border-color:rgba(240,215,155,.17);
+  box-shadow:inset 3px 0 0 #c9a866,0 12px 30px rgba(0,0,0,.12);
+}
+.chat-item .avatar{
+  background:linear-gradient(145deg,#ddd0ab,#8b7449);
+  color:#0d0b06;
+}
+.chat-item:nth-child(2) .avatar{background:linear-gradient(145deg,#d8e0d5,#7e9485)}
+.chat-item:nth-child(3) .avatar{background:linear-gradient(145deg,#e5d8be,#a78f67)}
+.chat-item:nth-child(4) .avatar{background:linear-gradient(145deg,#c9dad1,#618c7b)}
+.chat-item:nth-child(5) .avatar{background:linear-gradient(145deg,#ded4c2,#8b806e)}
+.unread-count{
+  background:linear-gradient(145deg,#efd695,#b8914e);
+  color:#171108;
+  box-shadow:0 5px 16px rgba(201,168,102,.18);
+}
+
+.sidebar-footer{
+  border-top-color:rgba(240,215,155,.08);
+  background:rgba(255,255,255,.012);
+}
+.connection-dot{
+  background:#65b79c;
+  box-shadow:0 0 0 5px rgba(101,183,156,.07),0 0 16px rgba(101,183,156,.36);
+}
+
+.chat-panel{
+  background:
+    radial-gradient(circle at 82% 12%,rgba(201,168,102,.055),transparent 24%),
+    linear-gradient(180deg,rgba(10,17,14,.90),rgba(4,8,6,.97));
+}
+.chat-header{
+  background:rgba(5,9,7,.44);
+}
+.chat-person .avatar{
+  background:linear-gradient(145deg,#e3d6b8,#8e7548);
+}
+.chat-person span{color:#b9a77e}
+
+.chat-scene{
+  padding:26px 30px 30px;
+}
+.chat-scene::before{
+  opacity:.18;
+  background-image:
+    radial-gradient(rgba(240,215,155,.18) .55px,transparent .55px),
+    linear-gradient(rgba(240,215,155,.018) 1px,transparent 1px);
+  background-size:22px 22px,100% 100%;
+}
+.date-chip{
+  border-color:rgba(240,215,155,.12);
+  background:rgba(255,255,255,.026);
+  color:#9b9f96;
+}
+.message{
+  border-color:rgba(240,215,155,.08);
+  background:linear-gradient(145deg,rgba(24,29,26,.96),rgba(15,19,17,.96));
+  box-shadow:0 10px 28px rgba(0,0,0,.16);
+}
+.message-row.me .message{
+  background:linear-gradient(145deg,rgba(27,64,53,.96),rgba(19,47,40,.97));
+  border-color:rgba(201,168,102,.14);
+  box-shadow:0 10px 30px rgba(0,0,0,.18);
+}
+.message-text{color:#eee9dd}
+.message-meta{color:#8e978e}
+.message-status{color:#d7c08b}
+.typing-bubble{
+  border-color:rgba(240,215,155,.08);
+  background:rgba(17,22,19,.96);
+}
+
+.composer{
+  padding:15px 18px;
+  border-top-color:rgba(240,215,155,.08);
+  background:rgba(5,9,7,.82);
+}
+.composer input{
+  height:47px;
+  border-color:rgba(240,215,155,.09);
+  background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.022));
+}
+.composer input:focus{
+  border-color:rgba(240,215,155,.26);
+  box-shadow:0 0 0 4px rgba(201,168,102,.045);
+}
+.send-button{
+  width:47px;height:47px;
+  background:linear-gradient(145deg,#f0d79b,#b68b45);
+  color:#171108;
+  box-shadow:0 12px 30px rgba(201,168,102,.18);
+}
+
+.social-panel{
+  background:
+    radial-gradient(circle at 80% 10%,rgba(201,168,102,.07),transparent 26%),
+    linear-gradient(180deg,rgba(5,10,8,.96),rgba(4,8,6,.98));
+}
+.social-header{
+  background:rgba(6,11,9,.76);
+  border-bottom-color:rgba(240,215,155,.08);
+}
+.social-tab{
+  border-color:rgba(240,215,155,.08);
+}
+.social-tab:hover,.social-tab.active{
+  background:rgba(201,168,102,.10);
+  border-color:rgba(240,215,155,.22);
+  color:#f2dfb0;
+}
+.create-post-card,.post-card,.story-full,.profile-social-head{
+  background:linear-gradient(145deg,rgba(17,23,20,.94),rgba(8,13,11,.96));
+  border-color:rgba(240,215,155,.09);
+  box-shadow:0 20px 55px rgba(0,0,0,.18);
+}
+.primary-social{
+  background:linear-gradient(145deg,#f0d79b,#b68b45);
+  color:#171108;
+  box-shadow:0 9px 22px rgba(201,168,102,.15);
+}
+.follow-btn{
+  border-color:rgba(201,168,102,.25);
+  background:rgba(201,168,102,.07);
+  color:#dec58d;
+}
+.follow-btn:hover{
+  background:rgba(201,168,102,.12);
+}
+.follow-btn.following{
+  color:#9ca29a;
+  border-color:rgba(255,255,255,.09);
+}
+.story-ring{
+  background:conic-gradient(#e7cb88,#5b8d7c,#f1dfa8,#b48a49,#e7cb88);
+}
+.profile-social-avatar,.social-avatar{
+  background:linear-gradient(145deg,#e3d6b8,#8e7548);
+  color:#151108;
+}
+.profile-status-pill,.global-live-pill{
+  border-color:rgba(201,168,102,.18);
+  color:#d8c28e;
+  background:rgba(201,168,102,.05);
+}
+
+.global-chat-shell{
+  max-width:920px;
+  border-color:rgba(240,215,155,.12);
+  background:
+    radial-gradient(circle at 80% 0%,rgba(201,168,102,.08),transparent 24%),
+    linear-gradient(145deg,rgba(15,22,19,.97),rgba(5,9,7,.98));
+  box-shadow:0 28px 80px rgba(0,0,0,.30);
+}
+.global-chat-head{
+  background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012));
+}
+.global-chat-head h3{font-size:1rem;letter-spacing:.01em}
+.global-live-pill{
+  padding:7px 11px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+.global-live-pill i{background:#65b79c;box-shadow:0 0 10px rgba(101,183,156,.65)}
+.global-message-avatar{
+  background:linear-gradient(145deg,#ded3b6,#84714e);
+}
+.global-message.mine .global-message-avatar{
+  background:linear-gradient(145deg,#f0d79b,#b68b45);
+}
+.global-message-body p{
+  border-color:rgba(240,215,155,.07);
+  background:rgba(255,255,255,.028);
+}
+.global-message.mine .global-message-body p{
+  background:rgba(201,168,102,.09);
+  border-color:rgba(201,168,102,.16);
+}
+.global-follow-mini{
+  border-color:rgba(201,168,102,.20);
+  background:rgba(201,168,102,.05);
+  color:#d8c18b;
+}
+.global-composer{
+  background:rgba(255,255,255,.016);
+  border-top-color:rgba(240,215,155,.08);
+}
+.global-composer input{
+  border-color:rgba(240,215,155,.09);
+  background:rgba(255,255,255,.03);
+}
+.global-composer button{
+  background:linear-gradient(145deg,#f0d79b,#b68b45);
+  color:#171108;
+}
+.global-chat-note{color:#747d73}
+
+.auth-screen{
+  background:
+    radial-gradient(circle at 18% 16%,rgba(201,168,102,.12),transparent 28%),
+    radial-gradient(circle at 82% 84%,rgba(74,130,113,.10),transparent 25%),
+    rgba(2,6,4,.88);
+}
+.auth-card{
+  border-color:rgba(240,215,155,.15);
+  background:linear-gradient(145deg,rgba(15,22,18,.96),rgba(5,9,7,.96));
+  box-shadow:0 38px 120px rgba(0,0,0,.55);
+}
+.auth-submit{
+  border-color:rgba(201,168,102,.34);
+  background:linear-gradient(145deg,#f0d79b,#b68b45);
+  color:#171108;
+}
+.auth-switch{color:#ddc58f}
+
+.call-card,.incoming-call-card{
+  border-color:rgba(240,215,155,.13);
+  background:linear-gradient(145deg,rgba(15,22,18,.99),rgba(4,8,6,.99));
+}
+.call-control.end{background:#8b3e45;border-color:#b05961}
+.security-actions .button{border-color:rgba(240,215,155,.10)}
+
+@media(max-width:760px){
+  .app-shell{padding:0}
+  .sidebar{
+    background:
+      radial-gradient(circle at 80% 0%,rgba(201,168,102,.06),transparent 28%),
+      rgba(5,9,7,.97);
+  }
+  .chat-header{background:rgba(5,9,7,.84)}
+  .chat-scene{padding:18px 12px 22px}
+  .composer{padding:10px 9px}
+  .social-panel{
+    background:linear-gradient(180deg,rgba(4,8,6,.98),rgba(3,6,5,.99));
+  }
+}
+
+@media(prefers-reduced-motion:no-preference){
+  .messenger{animation:sceneIn .72s cubic-bezier(.2,.85,.25,1) both}
+  .chat-item:hover,.social-tab:hover,.follow-btn:hover,.primary-social:hover{transition:transform .18s ease,background .18s ease,border-color .18s ease,box-shadow .18s ease}
+}

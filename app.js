@@ -976,6 +976,7 @@ async function logoutAllDevices(){
     await api("/api/auth/logout-all",{method:"POST",body:"{}"});
     localStorage.removeItem("ajchat_token");state.token="";state.me=null;
     if(state.socket){try{state.socket.close()}catch{}}
+    closeCallSocket();
     clearReplyTarget();showAuth(true);showToast("Logged out on all devices.");
   }catch(error){showToast(error.message)}
 }

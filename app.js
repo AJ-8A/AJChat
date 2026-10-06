@@ -794,7 +794,7 @@ async function registerNotifications(){
 async function notifyIncoming(message){
   if(!state.notifications || !message || message.sender===state.me?.username) return;
   if(!("Notification" in window) || Notification.permission!=="granted") return;
-  if(document.visibilityState==="visible" && (state.activeFriend===message.sender || state.activeGroup)) return;
+  if(document.visibilityState==="visible" && (state.activeFriend===message.sender || state.activeGroup || state.socialTab==="global")) return;
   try{
     const registration=state.notificationRegistration||(await navigator.serviceWorker?.ready);
     if(registration?.showNotification){

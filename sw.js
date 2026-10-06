@@ -1,4 +1,4 @@
-const CACHE="ajchat-shell-v5";
+const CACHE="ajchat-shell-v6";
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(["/AJChat/","/AJChat/index.html","/AJChat/styles.css","/AJChat/app.js?v=20261006-clean-v2","/AJChat/manifest.json","/AJChat/icon.svg"])).then(()=>self.skipWaiting()))});
 self.addEventListener("activate",event=>{event.waitUntil(self.clients.claim())});
 self.addEventListener("push",event=>{

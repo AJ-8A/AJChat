@@ -2043,3 +2043,403 @@ body{
   .notification-prompt{padding:11px}
   .notification-prompt-button{min-width:78px}
 }
+
+
+/* =========================================
+   AJCHAT LUX MOTION / GRAPHICS LAYER
+   ========================================= */
+:root{
+  --lux-gold:#d7b36a;
+  --lux-gold-soft:#f0d79b;
+  --lux-glow:rgba(215,179,106,.20);
+}
+
+body::before{
+  content:"";
+  position:fixed;
+  inset:-25%;
+  z-index:-2;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 22% 18%,rgba(71,209,164,.11),transparent 18%),
+    radial-gradient(circle at 78% 28%,rgba(215,179,106,.08),transparent 20%),
+    radial-gradient(circle at 50% 84%,rgba(79,117,255,.07),transparent 18%);
+  filter:blur(18px);
+  animation:luxAurora 18s ease-in-out infinite alternate;
+}
+
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  opacity:.42;
+  background:
+    linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px),
+    linear-gradient(rgba(255,255,255,.014) 1px,transparent 1px);
+  background-size:52px 52px;
+  mask-image:radial-gradient(circle at center,black 10%,transparent 78%);
+}
+
+.messenger{
+  position:relative;
+  isolation:isolate;
+  border-color:rgba(240,215,155,.16);
+  box-shadow:
+    0 35px 110px rgba(0,0,0,.42),
+    0 0 0 1px rgba(255,255,255,.025),
+    inset 0 1px 0 rgba(255,255,255,.08);
+}
+
+.messenger::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:20;
+  border-radius:inherit;
+  padding:1px;
+  background:linear-gradient(
+    115deg,
+    rgba(240,215,155,.24),
+    transparent 20%,
+    transparent 74%,
+    rgba(71,209,164,.20)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;
+  mask-composite:exclude;
+  opacity:.8;
+}
+
+.messenger::after{
+  content:"";
+  position:absolute;
+  width:38%;
+  height:65%;
+  right:-18%;
+  top:-25%;
+  pointer-events:none;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(215,179,106,.12),transparent 68%);
+  filter:blur(24px);
+  animation:luxOrb 11s ease-in-out infinite;
+}
+
+.brand-mark{
+  position:relative;
+  overflow:hidden;
+  box-shadow:
+    0 10px 28px rgba(71,209,164,.22),
+    0 0 0 1px rgba(240,215,155,.12);
+}
+.brand-mark::before{
+  content:"";
+  position:absolute;
+  inset:-45%;
+  background:conic-gradient(
+    from 0deg,
+    transparent 0 28%,
+    rgba(255,255,255,.60) 36%,
+    transparent 46% 66%,
+    rgba(240,215,155,.40) 73%,
+    transparent 82%
+  );
+  animation:brandSpin 6s linear infinite;
+}
+.brand-mark::after{
+  content:"AJ";
+  position:absolute;
+  inset:0;
+  display:grid;
+  place-items:center;
+}
+
+.icon-button{
+  position:relative;
+  overflow:hidden;
+}
+.icon-button::after,
+.send-button::after,
+.primary-social::after,
+.notification-prompt-button::after{
+  content:"";
+  position:absolute;
+  width:120%;
+  height:55%;
+  left:-110%;
+  top:-10%;
+  transform:rotate(-18deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.23),transparent);
+  transition:left .55s ease;
+  pointer-events:none;
+}
+.icon-button:hover::after,
+.send-button:hover::after,
+.primary-social:hover::after,
+.notification-prompt-button:hover::after{
+  left:105%;
+}
+
+.chat-item{
+  position:relative;
+  overflow:hidden;
+}
+.chat-item::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:linear-gradient(110deg,rgba(255,255,255,.035),transparent 42%,rgba(215,179,106,.035));
+  opacity:0;
+  transition:opacity .25s ease;
+  pointer-events:none;
+}
+.chat-item:hover::before,
+.chat-item.active::before{
+  opacity:1;
+}
+.chat-item.active{
+  box-shadow:
+    inset 3px 0 0 rgba(215,179,106,.75),
+    0 8px 25px rgba(0,0,0,.10);
+}
+
+.chat-item .avatar{
+  transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s ease;
+}
+.chat-item:hover .avatar{
+  transform:translateY(-2px) rotate(-2deg) scale(1.03);
+  box-shadow:0 10px 24px rgba(0,0,0,.22);
+}
+
+.online-avatar i,
+.connection-dot,
+.global-live-pill i{
+  animation:statusPulse 1.8s ease-in-out infinite;
+}
+
+.chat-header{
+  position:relative;
+  overflow:hidden;
+}
+.chat-header::before{
+  content:"";
+  position:absolute;
+  left:18%;
+  top:-80%;
+  width:42%;
+  height:180%;
+  background:linear-gradient(90deg,transparent,rgba(215,179,106,.06),transparent);
+  transform:rotate(12deg);
+  animation:headerSweep 12s ease-in-out infinite;
+  pointer-events:none;
+}
+.chat-person .avatar{
+  box-shadow:
+    0 10px 26px rgba(71,209,164,.16),
+    inset 0 1px 0 rgba(255,255,255,.35);
+}
+.chat-person span{
+  text-shadow:0 0 14px rgba(142,233,200,.12);
+}
+
+.chat-scene::after{
+  content:"";
+  position:absolute;
+  width:280px;
+  height:280px;
+  left:50%;
+  top:43%;
+  transform:translate(-50%,-50%);
+  border-radius:50%;
+  border:1px solid rgba(215,179,106,.06);
+  box-shadow:
+    0 0 0 28px rgba(215,179,106,.018),
+    0 0 0 56px rgba(71,209,164,.012);
+  animation:sceneHalo 10s ease-in-out infinite;
+  pointer-events:none;
+}
+
+.message-row{
+  transform-origin:50% 100%;
+}
+.message{
+  backdrop-filter:blur(10px) saturate(125%);
+  transition:transform .18s ease,box-shadow .22s ease,border-color .22s ease;
+}
+.message:hover{
+  transform:translateY(-1px);
+  box-shadow:0 12px 30px rgba(0,0,0,.18);
+}
+.message-row.me .message{
+  box-shadow:
+    0 10px 28px rgba(0,0,0,.16),
+    0 0 22px rgba(71,209,164,.045);
+}
+
+.send-button{
+  position:relative;
+  overflow:hidden;
+}
+.send-button:active{
+  transform:scale(.94) rotate(-3deg);
+}
+
+.composer{
+  box-shadow:0 -12px 30px rgba(0,0,0,.10);
+}
+.composer input{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+.global-entry,
+.notification-prompt{
+  position:relative;
+  overflow:hidden;
+}
+.global-entry::after,
+.notification-prompt::after{
+  content:"";
+  position:absolute;
+  inset:-120% 40% auto -20%;
+  height:220%;
+  transform:rotate(23deg);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);
+  animation:cardShine 9s ease-in-out infinite;
+  pointer-events:none;
+}
+
+.social-panel{
+  position:relative;
+}
+.social-panel::before{
+  content:"";
+  position:absolute;
+  width:420px;
+  height:420px;
+  right:-180px;
+  top:-170px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(215,179,106,.08),transparent 68%);
+  filter:blur(16px);
+  pointer-events:none;
+  animation:luxOrb 13s ease-in-out infinite reverse;
+}
+
+.social-tab,
+.follow-btn,
+.primary-social,
+.mini-social-btn,
+.global-follow-mini{
+  transition:transform .2s ease,box-shadow .2s ease,background .2s ease,border-color .2s ease;
+}
+.social-tab:hover,
+.follow-btn:hover,
+.primary-social:hover,
+.mini-social-btn:hover{
+  transform:translateY(-2px);
+}
+.primary-social{
+  position:relative;
+  overflow:hidden;
+  box-shadow:0 9px 24px rgba(71,209,164,.12);
+}
+
+.call-card,
+.incoming-call-card{
+  position:relative;
+  overflow:hidden;
+}
+.call-card::before,
+.incoming-call-card::before{
+  content:"";
+  position:absolute;
+  width:180px;
+  height:180px;
+  right:-60px;
+  top:-70px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(215,179,106,.16),transparent 68%);
+  filter:blur(9px);
+  animation:luxOrb 7s ease-in-out infinite;
+  pointer-events:none;
+}
+.call-control{
+  transition:transform .2s ease,background .2s ease,box-shadow .2s ease;
+}
+.call-control:hover{
+  transform:translateY(-2px) scale(1.04);
+  box-shadow:0 10px 24px rgba(0,0,0,.18);
+}
+.call-control.end:hover{
+  box-shadow:0 10px 28px rgba(168,61,77,.28);
+}
+
+@keyframes luxAurora{
+  0%{transform:translate3d(-2%,0,0) scale(.98) rotate(0deg)}
+  50%{transform:translate3d(3%,-1%,0) scale(1.03) rotate(1deg)}
+  100%{transform:translate3d(-1%,2%,0) scale(1) rotate(-1deg)}
+}
+@keyframes luxOrb{
+  0%,100%{transform:translate3d(0,0,0) scale(.96);opacity:.72}
+  50%{transform:translate3d(-16px,12px,0) scale(1.06);opacity:1}
+}
+@keyframes brandSpin{
+  to{transform:rotate(360deg)}
+}
+@keyframes statusPulse{
+  0%,100%{box-shadow:0 0 0 0 rgba(71,209,164,.12),0 0 8px rgba(71,209,164,.36)}
+  50%{box-shadow:0 0 0 6px rgba(71,209,164,.03),0 0 17px rgba(71,209,164,.62)}
+}
+@keyframes headerSweep{
+  0%,70%,100%{transform:translateX(-130%) rotate(12deg);opacity:0}
+  78%{opacity:1}
+  90%{transform:translateX(160%) rotate(12deg);opacity:0}
+}
+@keyframes sceneHalo{
+  0%,100%{opacity:.18;transform:translate(-50%,-50%) scale(.92)}
+  50%{opacity:.48;transform:translate(-50%,-50%) scale(1.07)}
+}
+@keyframes cardShine{
+  0%,72%,100%{transform:translateX(-40%);opacity:0}
+  80%{opacity:1}
+  90%{transform:translateX(120%);opacity:0}
+}
+
+@media (max-width:760px){
+  body::before{filter:blur(28px);opacity:.74}
+  body::after{opacity:.22;background-size:34px 34px}
+  .messenger::before{opacity:.55}
+  .messenger::after{width:55%;height:45%;right:-22%;top:-11%}
+  .chat-header::before{animation-duration:16s}
+  .chat-scene::after{width:210px;height:210px;opacity:.7}
+  .chat-item:hover{transform:none}
+  .chat-item:active{transform:scale(.992)}
+  .message:hover{transform:none}
+  .social-tab:hover,
+  .follow-btn:hover,
+  .primary-social:hover,
+  .mini-social-btn:hover{transform:none}
+}
+
+@media (prefers-reduced-motion:reduce){
+  body::before,
+  .messenger::after,
+  .brand-mark::before,
+  .chat-header::before,
+  .chat-scene::after,
+  .global-entry::after,
+  .notification-prompt::after,
+  .social-panel::before,
+  .call-card::before,
+  .incoming-call-card::before,
+  .online-avatar i,
+  .connection-dot,
+  .global-live-pill i{
+    animation:none!important;
+  }
+}

@@ -343,7 +343,8 @@ export default {
         if (!wsUser) return new Response("Unauthorized", { status: 401 });
 
         const parts = room.split(":");
-        if (room !== "global" && (parts.length !== 3 || parts[0] !== "dm")) return new Response("Invalid room", { status: 400 });
+        const validSpecialRoom = room === "global" || room === "calls";
+        if (!validSpecialRoom && (parts.length !== 3 || parts[0] !== "dm")) return new Response("Invalid room", { status: 400 });
 
         if (room.startsWith("dm:")) {
           const a = Number(parts[1]);
@@ -1173,7 +1174,7 @@ export class ChatRoom extends DurableObject {
     const room = new URL(request.url).searchParams.get("room") || "";
     if (!userId || !username || !room) return new Response("Unauthorized", { status: 401 });
 
-    if (room !== "global") {
+    if (room !== "global" && room !== "calls") {
       const pair = room.split(":").slice(1).map(Number);
       if (pair.length !== 2 || !pair.includes(userId)) return new Response("Forbidden", { status: 403 });
     }
@@ -1220,12 +1221,20 @@ export class ChatRoom extends DurableObject {
     }
 
     if (["call-invite","call-accept","call-offer","call-answer","call-ice","call-end","call-reject"].includes(data?.type)) {
-      const relay = { type: data.type, username: attachment.username };
+      const targetId = Number(data.to_user_id || 0);
+      const relay = {
+        type: data.type,
+        username: attachment.username,
+        from_user_id: Number(attachment.userId)
+      };
       if (data.mode) relay.mode = data.mode;
       if (data.sdp) relay.sdp = data.sdp;
       if (data.candidate) relay.candidate = data.candidate;
       for (const socket of this.ctx.getWebSockets()) {
-        if (socket !== ws && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(relay));
+        if (socket === ws || socket.readyState !== WebSocket.OPEN) continue;
+        const other = socket.deserializeAttachment();
+        if (!other || Number(other.userId) !== targetId) continue;
+        socket.send(JSON.stringify(relay));
       }
       return;
     }

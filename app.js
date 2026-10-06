@@ -131,8 +131,20 @@ async function submitAuth(event){
       loadFriendRequests()
     ]).then(async()=>{
       renderFriendList();
-      if(state.friends.length) await selectFriend(state.friends[0].username);
-      else renderEmptyFriends();
+      if(state.friends.length){
+        if(isMobileLayout()){
+          state.activeFriend=null;
+          state.activeGroup=null;
+          el("chatName").textContent="Select a friend";
+          el("chatStatus").textContent="Tap a name to start chatting";
+          messagesBox.innerHTML='<div class="empty-chat"><strong>Your chat is waiting.</strong><span>Tap a friend above to open the conversation.</span></div>';
+          showMobileFriendList();
+        }else{
+          await selectFriend(state.friends[0].username);
+        }
+      }else{
+        renderEmptyFriends();
+      }
     }).catch(()=>{
       renderFriendList();
       renderEmptyFriends();
@@ -511,6 +523,24 @@ function showChatItem(button){
   chatList.appendChild(button);
 }
 
+function isMobileLayout(){
+  return typeof window!=="undefined" && window.matchMedia("(max-width:760px)").matches;
+}
+
+function showMobileChat(){
+  if(isMobileLayout()){
+    sidebar.classList.add("closed");
+    el("chatPanel")?.classList.remove("hidden");
+  }
+}
+
+function showMobileFriendList(){
+  if(isMobileLayout()){
+    sidebar.classList.remove("closed");
+    el("chatPanel")?.classList.remove("hidden");
+  }
+}
+
 function renderFriendList(){
   chatList.innerHTML="";
   const filter=state.currentFilter;
@@ -645,7 +675,7 @@ async function selectFriend(username){
   el("chatAvatar").textContent=(friend?.initials||username.slice(0,2)).toUpperCase();
   el("chatName").textContent=username;
   el("chatStatus").textContent="connecting…";
-  sidebar.classList.add("closed");
+  showMobileChat();
   try{
     const data=await api("/api/messages/"+encodeURIComponent(username));
     state.messages=data.messages||[];
@@ -676,7 +706,7 @@ async function selectGroup(groupId){
   el("chatAvatar").textContent=(group.initials||group.name.slice(0,2)).toUpperCase();
   el("chatName").textContent=group.name;
   el("chatStatus").textContent=Number(group.member_count||0)+" members • group chat";
-  sidebar.classList.add("closed");
+  showMobileChat();
 
   try{
     const data=await api("/api/groups/"+group.id+"/messages");
@@ -1310,7 +1340,19 @@ el("socialContent")?.addEventListener("click",async event=>{
 });
 el("composer").addEventListener("submit",event=>{event.preventDefault();sendMessage()});
 el("newChatButton").addEventListener("click",addFriend);
-el("backButton").addEventListener("click",()=>sidebar.classList.remove("closed"));
+el("backButton").addEventListener("click",()=>{
+  if(state.rtc||state.incomingCall)cleanupCall(true);
+  if(state.pollTimer){clearInterval(state.pollTimer);state.pollTimer=null;}
+  if(state.groupPollTimer){clearInterval(state.groupPollTimer);state.groupPollTimer=null;}
+  if(state.socket){try{state.socket.close()}catch{} state.socket=null;}
+  state.activeFriend=null;
+  state.activeGroup=null;
+  state.messages=[];
+  messagesBox.innerHTML='<div class="empty-chat"><strong>Select a friend.</strong><span>Tap a name to open the chat.</span></div>';
+  el("chatName").textContent="Select a friend";
+  el("chatStatus").textContent="Tap a name to start chatting";
+  showMobileFriendList();
+});
 document.getElementById("messages")?.addEventListener("click",async event=>{
   const b=event.target.closest("button[data-action]");if(!b)return;const row=b.closest(".message-row");if(!row)return;
   const m=state.messages.find(x=>String(x.id)===row.dataset.messageId);if(!m)return;

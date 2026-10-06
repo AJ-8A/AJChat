@@ -1043,3 +1043,17 @@ body.light-mode .social-panel{background:linear-gradient(180deg,#f5f8f7,#eef4f2)
   .social-content{padding-block:8px}
   .global-chat-shell{height:100%}
 }
+
+
+.person-actions,.profile-social-buttons{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.person-actions .follow-btn,.profile-social-buttons .follow-btn{white-space:nowrap}
+.friend-btn{border-color:rgba(111,157,255,.3);background:rgba(111,157,255,.08);color:#b9d0ff}
+.friend-btn.friends{border-color:rgba(71,209,164,.3);background:rgba(71,209,164,.08);color:var(--accent-2)}
+.friend-btn.pending{border-color:var(--border);background:rgba(255,255,255,.035);color:var(--muted-2);cursor:default;opacity:.9}
+@media(max-width:600px){
+  .explore-person{align-items:flex-start}
+  .person-actions{width:auto;justify-content:flex-end}
+  .person-actions .follow-btn{padding:7px 8px}
+  .profile-social-buttons{width:100%;display:grid;grid-template-columns:1fr 1fr}
+  .profile-social-buttons .follow-btn{width:100%;min-height:40px}
+}

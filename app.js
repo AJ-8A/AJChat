@@ -267,7 +267,7 @@ async function renderHomeSocial(){
 async function renderExploreSocial(){
   const q=el("socialExploreInput")?.value.trim()||"";
   const data=await api("/api/social/explore?q="+encodeURIComponent(q));
-  const people=(data.people||[]).map(person=>"<article class='explore-person'><button class='social-user' data-social-user='"+escapeHTML(person.username)+"' type='button'><span class='social-avatar'>"+socialAvatar(person)+"</span><span><strong>@"+escapeHTML(person.username)+"</strong><small>"+escapeHTML(person.bio||"AJChat member")+"</small></span></button><button class='follow-btn "+(person.following?"following":"")+"' data-follow-user='"+escapeHTML(person.username)+"' type='button'>"+(person.following?"Following":"+ Follow")+"</button></article>").join("");
+  const people=(data.people||[]).map(person=>"<article class='explore-person'><button class='social-user' data-social-user='"+escapeHTML(person.username)+"' type='button'><span class='social-avatar'>"+socialAvatar(person)+"</span><span><strong>@"+escapeHTML(person.username)+"</strong><small>"+escapeHTML(person.bio||"AJChat member")+"</small></span></button><div class='person-actions'><button class='follow-btn "+(person.following?"following":"")+"' data-follow-user='"+escapeHTML(person.username)+"' type='button'>"+(person.following?"Following":"+ Follow")+"</button>"+friendButtonMarkup(person.username,person.friend_status)+"</div></article>").join("");
   const posts=(data.posts||[]).map(postCard).join("");
   el("socialContent").innerHTML="<section class='follow-by-username'><div class='follow-by-username-copy'><span class='eyebrow'>DIRECT FOLLOW</span><strong>Follow anyone by username</strong><small>Use their exact AJChat username. You can unfollow from the same box.</small></div><div class='follow-by-username-form'><span>@</span><input id='followUsernameInput' maxlength='24' autocomplete='off' autocapitalize='none' spellcheck='false' placeholder='username'><button id='followUsernameButton' type='button'>Follow</button></div><div class='follow-username-note' id='followUsernameNote'></div></section>"+
     "<section class='explore-search'><span>⌕</span><input id='socialExploreInput' value='"+escapeHTML(q)+"' placeholder='Search people or posts'><button id='socialExploreSearch' type='button'>Search</button></section>"+
@@ -316,7 +316,7 @@ async function renderNotificationsSocial(){
 }
 async function renderProfileSocial(username=state.me?.username){
   const data=await api("/api/social/profile/"+encodeURIComponent(username));
-  el("socialContent").innerHTML="<section class='profile-social-head'><div class='profile-social-avatar'>"+socialAvatar(data.profile)+"</div><div class='profile-social-copy'><div><span class='eyebrow'>PROFILE</span><h3>@"+escapeHTML(data.username)+"</h3></div><p>"+escapeHTML(data.profile.bio||"No bio yet.")+"</p><span class='profile-status-pill'>"+escapeHTML(data.profile.status||"Available to chat")+"</span></div><div class='profile-social-actions'>"+(data.self?"<button class='primary-social' id='editSocialProfile'>Edit profile</button>":"<button class='follow-btn "+(data.following?"following":"")+"' data-follow-user='"+escapeHTML(data.username)+"'>"+(data.following?"Following":"Follow")+"</button>")+"</div></section>"+
+  el("socialContent").innerHTML="<section class='profile-social-head'><div class='profile-social-avatar'>"+socialAvatar(data.profile)+"</div><div class='profile-social-copy'><div><span class='eyebrow'>PROFILE</span><h3>@"+escapeHTML(data.username)+"</h3></div><p>"+escapeHTML(data.profile.bio||"No bio yet.")+"</p><span class='profile-status-pill'>"+escapeHTML(data.profile.status||"Available to chat")+"</span></div><div class='profile-social-actions'>"+(data.self?"<button class='primary-social' id='editSocialProfile'>Edit profile</button>":"<div class='profile-social-buttons'><button class='follow-btn "+(data.following?"following":"")+"' data-follow-user='"+escapeHTML(data.username)+"'>"+(data.following?"Following":"Follow")+"</button>"+friendButtonMarkup(data.username,data.friend_status)+"</div>")+"</div></section>"+
     "<div class='profile-stats'><span><strong>"+data.stats.posts+"</strong>Posts</span><span><strong>"+data.stats.followers+"</strong>Followers</span><span><strong>"+data.stats.following+"</strong>Following</span></div>"+
     "<section class='social-section'><div class='section-head'><div><span class='eyebrow'>POSTS</span><h3>"+(data.self?"Your posts":"@"+escapeHTML(data.username)+"'s posts")+"</h3></div></div><div class='post-feed'>"+((data.posts||[]).map(postCard).join("")||"<div class='social-empty'>No posts yet.</div>")+"</div></section>";
   el("editSocialProfile")?.addEventListener("click",()=>openProfile(state.me.username,true));
@@ -341,7 +341,24 @@ async function loadSocial(tab=state.socialTab){
   }catch(error){el("socialContent").innerHTML="<div class='social-empty'>"+escapeHTML(error.message)+"</div>"}
 }
 function closeSocial(){el("socialPanel").classList.add("hidden");el("chatPanel").classList.remove("hidden")}
+function friendButtonMarkup(username,status){
+  const safe=escapeHTML(username);
+  if(status==="friends")return "<button class='follow-btn friend-btn friends' data-friend-user='"+safe+"' type='button'>✓ Friends</button>";
+  if(status==="pending")return "<button class='follow-btn friend-btn pending' data-friend-user='"+safe+"' type='button' disabled>Requested</button>";
+  if(status==="incoming")return "<button class='follow-btn friend-btn pending' data-friend-user='"+safe+"' type='button' disabled>Request waiting</button>";
+  return "<button class='follow-btn friend-btn' data-friend-user='"+safe+"' type='button'>＋ Add Friend</button>";
+}
 async function followUser(username){try{await api("/api/social/follow/"+encodeURIComponent(username),{method:"POST",body:"{}"});showToast("Follow status updated.");await loadSocial(state.socialTab)}catch(error){showToast(error.message)}}
+async function addFriendUser(username){
+  try{
+    const result=await api("/api/friends",{method:"POST",body:JSON.stringify({username})});
+    if(result.status==="friends")showToast("@"+username+" is already your friend.");
+    else if(result.status==="incoming")showToast("You already have a request from @"+username+".");
+    else showToast("Friend request sent to @"+username+".");
+    await loadSocial(state.socialTab);
+    await loadFriendRequests().catch(()=>{});
+  }catch(error){showToast(error.message)}
+}
 async function boot(){
   renderAuthMode();
   el("authForm").addEventListener("submit",submitAuth);
@@ -1128,6 +1145,7 @@ el("socialContent")?.addEventListener("click",async event=>{
   const postButton=event.target.closest("[data-post-action]");if(postButton){const card=postButton.closest("[data-post-id]");if(card)await togglePostAction(Number(card.dataset.postId),postButton.dataset.postAction);return}
   const userButton=event.target.closest("[data-social-user]");if(userButton){await renderProfileSocial(userButton.dataset.socialUser);return}
   const followButton=event.target.closest("[data-follow-user]");if(followButton){await followUser(followButton.dataset.followUser);return}
+  const friendButton=event.target.closest("[data-friend-user]");if(friendButton&&!friendButton.disabled){await addFriendUser(friendButton.dataset.friendUser);return}
   if(event.target.id==="globalMessageInput")return;
   const storyButton=event.target.closest("[data-story-view]");if(storyButton){await api("/api/social/stories/"+storyButton.dataset.storyView+"/view",{method:"POST",body:"{}"});showToast("Story marked viewed.");return}
   const storyOpen=event.target.closest("[data-story-id]");if(storyOpen){await loadSocial("stories");return}

@@ -375,6 +375,40 @@ export default {
         return json(request, { error: "Authentication required." }, 401);
       }
 
+      if (url.pathname === "/api/call/ice" && request.method === "GET") {
+        if (!env.TURN_KEY_ID || !env.TURN_API_TOKEN) {
+          return json(request, {
+            iceServers: [
+              { urls: "stun:stun.cloudflare.com:3478" },
+              { urls: "stun:stun.l.google.com:19302" }
+            ],
+            turnAvailable: false
+          });
+        }
+
+        const turnResponse = await fetch(
+          "https://rtc.live.cloudflare.com/v1/turn/keys/" +
+            encodeURIComponent(env.TURN_KEY_ID) +
+            "/credentials/generate-ice-servers",
+          {
+            method: "POST",
+            headers: {
+              "Authorization": "Bearer " + env.TURN_API_TOKEN,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ ttl: 3600 })
+          }
+        );
+
+        if (!turnResponse.ok) {
+          return json(request, { error: "TURN credentials could not be generated." }, 502);
+        }
+
+        const data = await turnResponse.json();
+        const iceServers = Array.isArray(data.iceServers) ? data.iceServers : [];
+        return json(request, { iceServers, turnAvailable: iceServers.some(server => String(server.urls || "").includes("turn:") || Array.isArray(server.urls) && server.urls.some(url => String(url).startsWith("turn"))) });
+      }
+
       if (url.pathname === "/api/presence" && request.method === "POST") {
         const now = Math.floor(Date.now() / 1000);
         await env.AJCHAT_DB

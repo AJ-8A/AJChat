@@ -754,10 +754,15 @@ async function preparePeer(mode){
     throw new Error(reason+" Check browser permissions and try again.");
   }
   state.localStream=stream;
-  const pc=new RTCPeerConnection({iceServers:[
+  let iceServers=[
     {urls:"stun:stun.cloudflare.com:3478"},
     {urls:"stun:stun.l.google.com:19302"}
-  ]});
+  ];
+  try{
+    const ice=await api("/api/call/ice");
+    if(Array.isArray(ice.iceServers)&&ice.iceServers.length)iceServers=ice.iceServers;
+  }catch{}
+  const pc=new RTCPeerConnection({iceServers});
   state.rtc=pc;
   state.localStream.getTracks().forEach(track=>pc.addTrack(track,state.localStream));
   pc.onicecandidate=e=>{if(e.candidate)callSocketSend({type:"call-ice",candidate:e.candidate})};

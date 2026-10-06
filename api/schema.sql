@@ -249,3 +249,15 @@ CREATE TABLE IF NOT EXISTS global_messages (
   FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_global_messages_time ON global_messages(id DESC);
+
+-- AJChat Push Notifications
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  user_id INTEGER NOT NULL,
+  endpoint TEXT PRIMARY KEY,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user
+  ON push_subscriptions(user_id, updated_at DESC);

@@ -23,7 +23,7 @@ const state = {
   friendRequestTimer: null,
   typingTimer: null,
   replyTo: null,
-  notifications: localStorage.getItem("ajchat_notifications") === "on",
+  notifications: (typeof Notification !== "undefined" && Notification.permission === "granted") || localStorage.getItem("ajchat_notifications") === "on",
   rtc: null,
   localStream: null,
   callMode: null,
@@ -115,8 +115,13 @@ async function submitAuth(event){
     setAuthMessage("");
     showToast(state.mode==="register"?"Account created. You're in.":"You're in.");
 
+    await registerNotifications();
     refreshNotificationPrompt();
-    syncPushSubscription().catch(()=>{});
+    if(typeof Notification !== "undefined" && Notification.permission==="granted"){
+      state.notifications=true;
+      localStorage.setItem("ajchat_notifications","on");
+      syncPushSubscription().catch(()=>{});
+    }
     startPresence();
     startFriendRefresh();
     startFriendRequestRefresh();
@@ -922,6 +927,10 @@ function refreshNotificationPrompt(){
   if(!card)return;
   const supported=("Notification" in window) && ("serviceWorker" in navigator);
   const permission=supported?Notification.permission:"unsupported";
+  if(permission==="granted"){
+    state.notifications=true;
+    localStorage.setItem("ajchat_notifications","on");
+  }
   card.classList.toggle("hidden",permission!=="default"||!state.token);
   if(button)button.disabled=!supported;
   if(permission==="denied"&&button)button.textContent="Blocked in browser";
@@ -947,8 +956,11 @@ async function syncPushSubscription(){
   if(Notification.permission!=="granted")return false;
   const registration=state.notificationRegistration||(await registerNotifications());
   if(!registration) return false;
+  await navigator.serviceWorker.ready;
   const config=await api("/api/push/config");
-  if(!config.enabled || !config.publicKey)return false;
+  if(!config.enabled || !config.publicKey){
+    throw new Error("Push notifications are not configured on the server yet.");
+  }
   let subscription=await registration.pushManager.getSubscription();
   if(!subscription){
     subscription=await registration.pushManager.subscribe({
@@ -962,7 +974,9 @@ async function syncPushSubscription(){
 }
 
 async function notifyIncoming(message){
-  if(!state.notifications || !message || message.sender===state.me?.username) return;
+  const enabled=state.notifications || (typeof Notification !== "undefined" && Notification.permission==="granted");
+  if(!enabled || !message || message.sender===state.me?.username) return;
+  state.notifications=true;
   if(!("Notification" in window) || Notification.permission!=="granted") return;
   if(document.visibilityState==="visible" && (state.activeFriend===message.sender || state.activeGroup || state.socialTab==="global")) return;
   try{

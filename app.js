@@ -269,9 +269,33 @@ async function renderExploreSocial(){
   const data=await api("/api/social/explore?q="+encodeURIComponent(q));
   const people=(data.people||[]).map(person=>"<article class='explore-person'><button class='social-user' data-social-user='"+escapeHTML(person.username)+"' type='button'><span class='social-avatar'>"+socialAvatar(person)+"</span><span><strong>@"+escapeHTML(person.username)+"</strong><small>"+escapeHTML(person.bio||"AJChat member")+"</small></span></button><button class='follow-btn "+(person.following?"following":"")+"' data-follow-user='"+escapeHTML(person.username)+"' type='button'>"+(person.following?"Following":"+ Follow")+"</button></article>").join("");
   const posts=(data.posts||[]).map(postCard).join("");
-  el("socialContent").innerHTML="<section class='explore-search'><span>⌕</span><input id='socialExploreInput' value='"+escapeHTML(q)+"' placeholder='Search people or posts'><button id='socialExploreSearch' type='button'>Search</button></section>"+
+  el("socialContent").innerHTML="<section class='follow-by-username'><div class='follow-by-username-copy'><span class='eyebrow'>DIRECT FOLLOW</span><strong>Follow anyone by username</strong><small>Use their exact AJChat username. You can unfollow from the same box.</small></div><div class='follow-by-username-form'><span>@</span><input id='followUsernameInput' maxlength='24' autocomplete='off' autocapitalize='none' spellcheck='false' placeholder='username'><button id='followUsernameButton' type='button'>Follow</button></div><div class='follow-username-note' id='followUsernameNote'></div></section>"+
+    "<section class='explore-search'><span>⌕</span><input id='socialExploreInput' value='"+escapeHTML(q)+"' placeholder='Search people or posts'><button id='socialExploreSearch' type='button'>Search</button></section>"+
     "<section class='social-section'><div class='section-head'><div><span class='eyebrow'>DISCOVER</span><h3>People to follow</h3></div></div><div class='people-grid'>"+(people||"<div class='social-empty'>No people found.</div>")+"</div></section>"+
     "<section class='social-section'><div class='section-head'><div><span class='eyebrow'>EXPLORE</span><h3>Public posts</h3></div></div><div class='post-feed'>"+(posts||"<div class='social-empty'>No public posts match that search.</div>")+"</div></section>";
+  const followInput=el("followUsernameInput"), followButton=el("followUsernameButton"), followNote=el("followUsernameNote");
+  const submitUsernameFollow=async()=>{
+    const username=(followInput?.value||"").trim().replace(/^@+/,"");
+    if(!username){if(followNote)followNote.textContent="Enter a username first.";return}
+    if(username.toLowerCase()===(state.me?.username||"").toLowerCase()){if(followNote)followNote.textContent="You cannot follow yourself.";return}
+    if(followButton){followButton.disabled=true;followButton.textContent="Working…"}
+    if(followNote)followNote.textContent="";
+    try{
+      const result=await api("/api/social/follow/"+encodeURIComponent(username),{method:"POST",body:"{}"});
+      const action=result.following?"Following":"Unfollowed";
+      if(followInput)followInput.value="";
+      if(followNote)followNote.textContent=(action==="Following"?"Now following @":"Unfollowed @")+result.username+".";
+      showToast(action+" @"+result.username+".");
+      await renderExploreSocial();
+    }catch(error){
+      if(followNote)followNote.textContent=error.message;
+      showToast(error.message);
+    }finally{
+      if(followButton){followButton.disabled=false;followButton.textContent="Follow"}
+    }
+  };
+  followButton?.addEventListener("click",submitUsernameFollow);
+  followInput?.addEventListener("keydown",e=>{if(e.key==="Enter")submitUsernameFollow()});
   el("socialExploreSearch")?.addEventListener("click",()=>renderExploreSocial());
   el("socialExploreInput")?.addEventListener("keydown",e=>{if(e.key==="Enter")renderExploreSocial()});
 }

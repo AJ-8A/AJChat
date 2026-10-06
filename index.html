@@ -30,12 +30,8 @@
           </div>
 
           <div class="sidebar-actions">
-            <button class="icon-button" id="socialHomeButton" type="button" title="Home">⌂</button>
-            <button class="icon-button" id="socialExploreButton" type="button" title="Explore">⌕</button>
-            <button class="icon-button" id="socialNotifyButton" type="button" title="Notifications">♡</button>
+            <button class="icon-button" id="newChatButton" type="button" aria-label="Add friend" title="Add friend">＋</button>
             <button class="icon-button" id="socialProfileButton" type="button" title="Profile">◎</button>
-            <button class="icon-button" id="newChatButton" type="button" aria-label="Start new chat">＋</button>
-            <button class="icon-button" id="newGroupButton" type="button" aria-label="Create group">◈</button>
             <button class="icon-button" id="themeButton" type="button" aria-label="Toggle theme">◐</button>
           </div>
         </header>
@@ -53,7 +49,6 @@
         <div class="filter-pills" role="tablist" aria-label="Chat filters">
           <button class="filter-pill active" data-filter="all" type="button">All</button>
           <button class="filter-pill" data-filter="unread" type="button">Unread</button>
-          <button class="filter-pill" data-filter="groups" type="button">Groups</button>
         </div>
         <button class="global-entry" id="globalChatButton" type="button">
           <span class="global-entry-icon">◎</span>
@@ -79,13 +74,6 @@
           <div class="request-list" id="requestList"></div>
         </section>
 
-        <section class="online-strip" id="onlineStrip" hidden>
-          <div class="online-heading">
-            <strong>Online now</strong>
-            <span id="onlineCount">0</span>
-          </div>
-          <div class="online-avatars" id="onlineAvatars"></div>
-        </section>
 
         <div class="chat-list" id="chatList"></div>
 
@@ -106,10 +94,7 @@
 
           <div class="chat-actions">
             <button class="icon-button" id="chatSearchButton" type="button" title="Search in chat">⌕</button>
-            <button class="icon-button" id="audioCallButton" type="button" title="Voice call">☎</button>
-            <button class="icon-button" id="videoCallButton" type="button" title="Video call">▣</button>
             <button class="icon-button" id="notifyButton" type="button" title="Notifications">♢</button>
-            <button class="icon-button" id="chatMoreButton" type="button" title="More">•••</button>
           </div>
         </header>
 
@@ -144,15 +129,7 @@
           </div>
           <button class="icon-button" id="socialCloseButton" type="button">×</button>
         </header>
-        <div class="social-nav">
-          <button class="social-tab active" data-social-tab="home" type="button">Home</button>
-          <button class="social-tab" data-social-tab="global" type="button">Global chat</button>
-          <button class="social-tab" data-social-tab="explore" type="button">Explore</button>
-          <button class="social-tab" data-social-tab="stories" type="button">Stories</button>
-          <button class="social-tab" data-social-tab="saved" type="button">Saved</button>
-          <button class="social-tab" data-social-tab="profile" type="button">Profile</button>
-          <button class="social-tab" data-social-tab="notifications" type="button">Notifications</button>
-        </div>
+        <div class="global-only-label"><span class="global-only-dot"></span> Live community room</div>
         <div class="social-content" id="socialContent">
           <div class="social-loading">Loading your social world…</div>
         </div>
@@ -228,6 +205,6 @@
     <button type="button">✨</button><button type="button">🥳</button><button type="button">💯</button><button type="button">🚀</button>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script src="app.js?v=20261006-push-v1"></script>
+  <script src="app.js?v=20261006-clean-v2"></script>
 </body>
 </html>

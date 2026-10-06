@@ -23,7 +23,7 @@ const state = {
   friendRequestTimer: null,
   typingTimer: null,
   replyTo: null,
-  notifications: localStorage.getItem("ajchat_notifications") !== "off",
+  notifications: localStorage.getItem("ajchat_notifications") === "on",
   rtc: null,
   localStream: null,
   callMode: null,

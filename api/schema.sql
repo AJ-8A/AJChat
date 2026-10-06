@@ -239,3 +239,13 @@ CREATE TABLE IF NOT EXISTS notifications (
   FOREIGN KEY (story_id) REFERENCES stories(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_notifications_user_time ON notifications(user_id, created_at DESC);
+
+
+CREATE TABLE IF NOT EXISTS global_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  sender_id INTEGER NOT NULL,
+  body TEXT NOT NULL,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_global_messages_time ON global_messages(id DESC);

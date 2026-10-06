@@ -31,7 +31,10 @@ const state = {
   incomingCall: null,
   notificationRegistration: null,
   socialTab: "home",
-  socialRefreshTimer: null
+  socialRefreshTimer: null,
+  globalSocket: null,
+  globalMessages: [],
+  globalPollTimer: null
 };
 
 const el = id => document.getElementById(id);
@@ -188,6 +191,69 @@ async function togglePostAction(postId,action){
     try{await api("/api/social/posts/"+postId+"/"+action,{method:"POST",body:"{}"});await loadSocial(state.socialTab)}catch(error){showToast(error.message)}
   }
 }
+function closeGlobalSocket(){
+  if(state.globalPollTimer){clearInterval(state.globalPollTimer);state.globalPollTimer=null}
+  if(state.globalSocket){try{state.globalSocket.close()}catch{} state.globalSocket=null}
+}
+async function loadGlobalHistory(){
+  const data=await api("/api/social/global/messages");
+  state.globalMessages=data.messages||[];
+}
+function renderGlobalMessages(){
+  const box=el("globalMessages");if(!box)return;
+  if(!state.globalMessages.length){box.innerHTML="<div class='global-empty-chat'>No messages yet. Say hello to everyone 👋</div>";return}
+  box.innerHTML=state.globalMessages.map(m=>{
+    const mine=m.username===state.me?.username;
+    return "<article class='global-message "+(mine?"mine":"")+"'><div class='global-message-avatar'>"+socialAvatar(m)+"</div><div class='global-message-body'><div class='global-message-meta'><button class='global-user-name' data-social-user='"+escapeHTML(m.username)+"' type='button'>@"+escapeHTML(m.username)+"</button>"+(mine?"":"<button class='global-follow-mini' data-follow-user='"+escapeHTML(m.username)+"' type='button'>Follow</button>")+"</div><p>"+escapeHTML(m.body).replace(/\\n/g,"<br>")+"</p><time>"+socialDate(m.created_at)+"</time></div></article>";
+  }).join("");
+  box.scrollTop=box.scrollHeight;
+}
+function connectGlobalSocket(){
+  closeGlobalSocket();
+  if(!state.token)return;
+  const socket=new WebSocket(WS_BASE+"/ws?room=global&token="+encodeURIComponent(state.token));
+  state.globalSocket=socket;
+  socket.onopen=()=>{if(state.globalSocket===socket)setStatusGlobal("Connected to Global Chat");};
+  socket.onmessage=event=>{
+    if(state.globalSocket!==socket)return;
+    try{
+      const data=JSON.parse(event.data);
+      if(data.type==="message"&&data.message){
+        state.globalMessages.push(data.message);
+        state.globalMessages=state.globalMessages.slice(-100);
+        renderGlobalMessages();
+        if(data.message.username!==state.me?.username)notifyIncoming({id:"global-"+data.message.id,sender:data.message.username,body:data.message.body});
+      }
+      if(data.type==="rate_limited")setStatusGlobal(data.message||"Slow down a little.");
+      if(data.type==="ready")setStatusGlobal(data.online?"Connected • people are here":"Connected • be the first to chat");
+      if(data.type==="presence")setStatusGlobal(data.online?"Someone joined Global Chat":"A user left Global Chat");
+    }catch{}
+  };
+  socket.onclose=()=>{
+    if(state.globalSocket!==socket)return;
+    state.globalSocket=null;
+    setStatusGlobal("Reconnecting…");
+    state.globalPollTimer=setInterval(async()=>{
+      try{await loadGlobalHistory();renderGlobalMessages()}catch{}
+    },3000);
+    setTimeout(()=>{if(state.socialTab==="global"&&state.token)connectGlobalSocket()},1500);
+  };
+  socket.onerror=()=>setStatusGlobal("Connection unstable — retrying");
+}
+function setStatusGlobal(text){const n=el("globalChatStatus");if(n)n.textContent=text}
+async function sendGlobalMessage(){
+  const field=el("globalMessageInput");const text=field?.value.trim()||"";
+  if(!text)return;
+  if(!state.globalSocket||state.globalSocket.readyState!==WebSocket.OPEN){showToast("Global Chat is reconnecting…");connectGlobalSocket();return}
+  try{state.globalSocket.send(JSON.stringify({type:"message",text}));field.value="";field.focus()}catch{showToast("Could not send global message.")}
+}
+async function renderGlobalSocial(){
+  await loadGlobalHistory();
+  el("socialContent").innerHTML="<section class='global-chat-shell'><header class='global-chat-head'><div><span class='eyebrow'>PUBLIC AJCHAT</span><h3>Global Chat</h3><p id='globalChatStatus'>Connecting…</p></div><span class='global-live-pill'><i></i>Live</span></header><div class='global-messages' id='globalMessages'></div><form class='global-composer' id='globalComposer'><input id='globalMessageInput' maxlength='500' placeholder='Message everyone…' autocomplete='off'><button type='submit'>Send</button></form><div class='global-chat-note'>Be respectful. Everyone on AJChat can read this room.</div></section>";
+  renderGlobalMessages();
+  el("globalComposer")?.addEventListener("submit",event=>{event.preventDefault();sendGlobalMessage()});
+  connectGlobalSocket();
+}
 async function renderHomeSocial(){
   const data=await api("/api/social/feed");
   const stories=await api("/api/social/stories");
@@ -232,14 +298,16 @@ async function renderProfileSocial(username=state.me?.username){
   el("editSocialProfile")?.addEventListener("click",()=>openProfile(state.me.username,true));
 }
 async function loadSocial(tab=state.socialTab){
+  if(state.socialTab==="global"&&tab!=="global")closeGlobalSocket();
   state.socialTab=tab;
   el("chatPanel").classList.add("hidden");el("socialPanel").classList.remove("hidden");
   document.querySelectorAll(".social-tab").forEach(b=>b.classList.toggle("active",b.dataset.socialTab===tab));
-  const title={home:"Home feed",explore:"Explore",stories:"Stories",saved:"Saved",profile:"Your profile",notifications:"Notifications"}[tab]||"AJChat Social";
-  el("socialTitle").textContent=title;el("socialSubtitle").textContent=tab==="home"?"See what your people are sharing.":"Discover the AJChat community.";
+  const title={home:"Home feed",global:"Global Chat",explore:"Explore",stories:"Stories",saved:"Saved",profile:"Your profile",notifications:"Notifications"}[tab]||"AJChat Social";
+  el("socialTitle").textContent=title;el("socialSubtitle").textContent=tab==="home"?"See what your people are sharing.":tab==="global"?"One public room for the whole AJChat community.":"Discover the AJChat community.";
   el("socialContent").innerHTML="<div class='social-loading'>Loading…</div>";
   try{
     if(tab==="home")await renderHomeSocial();
+    else if(tab==="global")await renderGlobalSocial();
     else if(tab==="explore")await renderExploreSocial();
     else if(tab==="stories")await renderStoriesSocial();
     else if(tab==="saved")await renderSavedSocial();
@@ -1036,6 +1104,7 @@ el("socialContent")?.addEventListener("click",async event=>{
   const postButton=event.target.closest("[data-post-action]");if(postButton){const card=postButton.closest("[data-post-id]");if(card)await togglePostAction(Number(card.dataset.postId),postButton.dataset.postAction);return}
   const userButton=event.target.closest("[data-social-user]");if(userButton){await renderProfileSocial(userButton.dataset.socialUser);return}
   const followButton=event.target.closest("[data-follow-user]");if(followButton){await followUser(followButton.dataset.followUser);return}
+  if(event.target.id==="globalMessageInput")return;
   const storyButton=event.target.closest("[data-story-view]");if(storyButton){await api("/api/social/stories/"+storyButton.dataset.storyView+"/view",{method:"POST",body:"{}"});showToast("Story marked viewed.");return}
   const storyOpen=event.target.closest("[data-story-id]");if(storyOpen){await loadSocial("stories");return}
   const tabButton=event.target.closest("[data-social-tab]");if(tabButton)await loadSocial(tabButton.dataset.socialTab);

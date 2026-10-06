@@ -1183,6 +1183,43 @@ export default {
   }
 };
 
+async function pushNotifyUser(env, userId, payload) {
+  const publicKey = typeof env.VAPID_PUBLIC_KEY === "string" ? env.VAPID_PUBLIC_KEY.trim() : "";
+  const privateKey = typeof env.VAPID_PRIVATE_KEY === "string" ? env.VAPID_PRIVATE_KEY.trim() : "";
+  if (!publicKey || !privateKey) return;
+
+  const rows = await env.AJCHAT_DB
+    .prepare("SELECT endpoint,p256dh,auth FROM push_subscriptions WHERE user_id=?")
+    .bind(userId)
+    .all();
+
+  const vapid = {
+    subject: typeof env.VAPID_SUBJECT === "string" && env.VAPID_SUBJECT.trim()
+      ? env.VAPID_SUBJECT.trim()
+      : "https://aj-8a.github.io/AJChat/",
+    publicKey,
+    privateKey
+  };
+
+  await Promise.all((rows.results || []).map(async subscription => {
+    const target = {
+      endpoint: subscription.endpoint,
+      keys: { p256dh: subscription.p256dh, auth: subscription.auth }
+    };
+    try {
+      const delivered = await sendPushNotification(target, payload, vapid);
+      if (delivered === false) {
+        await env.AJCHAT_DB.prepare("DELETE FROM push_subscriptions WHERE endpoint=?").bind(subscription.endpoint).run();
+      }
+    } catch (error) {
+      const status = Number(error?.statusCode || 0);
+      if (status === 404 || status === 410) {
+        await env.AJCHAT_DB.prepare("DELETE FROM push_subscriptions WHERE endpoint=?").bind(subscription.endpoint).run();
+      }
+    }
+  }));
+}
+
 export class ChatRoom extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
@@ -1307,6 +1344,19 @@ export class ChatRoom extends DurableObject {
 
     for (const socket of this.ctx.getWebSockets()) {
       if (socket.readyState === WebSocket.OPEN) socket.send(payload);
+    }
+
+    if (attachment.room !== "global") {
+      const [a, b] = attachment.room.split(":").slice(1).map(Number);
+      const recipientId = a === Number(attachment.userId) ? b : a;
+      if (recipientId && recipientId !== Number(attachment.userId)) {
+        this.ctx.waitUntil(pushNotifyUser(this.env, recipientId, {
+          title: "@" + attachment.username,
+          body,
+          url: "/AJChat/",
+          tag: "chat-" + attachment.room
+        }).catch(() => {}));
+      }
     }
   }
 

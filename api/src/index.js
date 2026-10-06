@@ -135,6 +135,12 @@ async function isFriend(db, userId, friendId) {
     .first());
 }
 
+async function socialNotify(db,{userId,actorId,type,postId=null,storyId=null,body}) {
+  if (Number(userId) === Number(actorId)) return;
+  await db.prepare("INSERT INTO notifications (user_id, actor_id, type, post_id, story_id, body) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(userId, actorId || null, type, postId, storyId, cleanProfileText(body, 180)).run();
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -909,6 +915,78 @@ export default {
         return json(request, { username: target.username, initials: initials(target.username), profile: { bio: profile?.bio || "", status: profile?.status || "Available to chat", avatar: profile?.avatar || "✨", updated_at: Number(profile?.updated_at || 0) } });
       }
 
+
+      const socialFollowMatch = url.pathname.match(/^\/api\/social\/follow\/([^/]+)$/);
+      if (socialFollowMatch && request.method === "POST") {
+        const username = decodeURIComponent(socialFollowMatch[1]);
+        const target = await env.AJCHAT_DB.prepare("SELECT id, username FROM users WHERE username = ? COLLATE NOCASE").bind(username).first();
+        if (!target) return json(request,{error:"User not found."},404);
+        if (Number(target.id) === Number(user.id)) return json(request,{error:"You cannot follow yourself."},400);
+        if (await isBlocked(env.AJCHAT_DB,user.id,target.id)) return json(request,{error:"You cannot follow this user."},403);
+        const existing = await env.AJCHAT_DB.prepare("SELECT 1 FROM follows WHERE follower_id=? AND following_id=?").bind(user.id,target.id).first();
+        if(existing){await env.AJCHAT_DB.prepare("DELETE FROM follows WHERE follower_id=? AND following_id=?").bind(user.id,target.id).run();return json(request,{ok:true,following:false,username:target.username});}
+        await env.AJCHAT_DB.prepare("INSERT INTO follows (follower_id, following_id) VALUES (?,?)").bind(user.id,target.id).run();
+        await socialNotify(env.AJCHAT_DB,{userId:target.id,actorId:user.id,type:"follow",body:"@"+user.username+" followed you."});
+        return json(request,{ok:true,following:true,username:target.username});
+      }
+
+      if (url.pathname === "/api/social/feed" && request.method === "GET") {
+        const rows = await env.AJCHAT_DB.prepare("SELECT p.id,p.author_id,p.body,p.media_url,p.created_at,p.updated_at,u.username,COALESCE(pr.avatar,'✨') AS avatar,COALESCE(pr.status,'Available to chat') AS status,(SELECT COUNT(*) FROM post_likes l WHERE l.post_id=p.id) AS like_count,(SELECT COUNT(*) FROM post_comments c WHERE c.post_id=p.id) AS comment_count,EXISTS(SELECT 1 FROM post_likes l2 WHERE l2.post_id=p.id AND l2.user_id=?) AS liked,EXISTS(SELECT 1 FROM saved_posts sp WHERE sp.post_id=p.id AND sp.user_id=?) AS saved,EXISTS(SELECT 1 FROM follows f WHERE f.follower_id=? AND f.following_id=p.author_id) AS following FROM posts p JOIN users u ON u.id=p.author_id LEFT JOIN profiles pr ON pr.user_id=p.author_id WHERE p.author_id=? OR EXISTS(SELECT 1 FROM follows f3 WHERE f3.follower_id=? AND f3.following_id=p.author_id) OR EXISTS(SELECT 1 FROM friendships fr WHERE fr.user_id=? AND fr.friend_id=p.author_id) ORDER BY p.id DESC LIMIT 50").bind(user.id,user.id,user.id,user.id,user.id,user.id).all();
+        return json(request,{posts:(rows.results||[]).map(p=>({...p,id:Number(p.id),like_count:Number(p.like_count||0),comment_count:Number(p.comment_count||0),liked:Boolean(Number(p.liked)),saved:Boolean(Number(p.saved)),following:Boolean(Number(p.following))}))});
+      }
+
+      if (url.pathname === "/api/social/posts" && request.method === "POST") {
+        const body=await bodyJson(request);const text=cleanProfileText(body.body,1000);const media=cleanProfileText(body.media_url,500);
+        if(!text && !media)return json(request,{error:"Write something before posting."},400);
+        const inserted=await env.AJCHAT_DB.prepare("INSERT INTO posts (author_id,body,media_url) VALUES (?,?,?)").bind(user.id,text,media).run();
+        return json(request,{ok:true,post:{id:Number(inserted.meta?.last_row_id||0),body:text,media_url:media,username:user.username,avatar:(await ensureProfile(env.AJCHAT_DB,user.id))?.avatar||"✨"}},201);
+      }
+
+      const postControl=url.pathname.match(/^\/api\/social\/posts\/(\d+)(?:\/(like|comment|save|delete))?$/);
+      if(postControl && request.method==="POST"){
+        const postId=Number(postControl[1]),action=postControl[2];
+        const post=await env.AJCHAT_DB.prepare("SELECT id,author_id FROM posts WHERE id=?").bind(postId).first();
+        if(!post)return json(request,{error:"Post not found."},404);
+        if(action==="like"){
+          const liked=await env.AJCHAT_DB.prepare("SELECT 1 FROM post_likes WHERE post_id=? AND user_id=?").bind(postId,user.id).first();
+          if(liked){await env.AJCHAT_DB.prepare("DELETE FROM post_likes WHERE post_id=? AND user_id=?").bind(postId,user.id).run()}else{await env.AJCHAT_DB.prepare("INSERT INTO post_likes(post_id,user_id) VALUES(?,?)").bind(postId,user.id).run();await socialNotify(env.AJCHAT_DB,{userId:post.author_id,actorId:user.id,type:"like",postId,body:"@"+user.username+" liked your post."});}
+          const count=await env.AJCHAT_DB.prepare("SELECT COUNT(*) AS count FROM post_likes WHERE post_id=?").bind(postId).first();return json(request,{ok:true,liked:!liked,like_count:Number(count?.count||0)});
+        }
+        if(action==="comment"){const body=await bodyJson(request);const text=cleanProfileText(body.body,500);if(!text)return json(request,{error:"Comment cannot be empty."},400);const inserted=await env.AJCHAT_DB.prepare("INSERT INTO post_comments(post_id,user_id,body) VALUES(?,?,?)").bind(postId,user.id,text).run();await socialNotify(env.AJCHAT_DB,{userId:post.author_id,actorId:user.id,type:"comment",postId,body:"@"+user.username+" commented on your post."});return json(request,{ok:true,comment:{id:Number(inserted.meta?.last_row_id||0),username:user.username,body:text,created_at:Math.floor(Date.now()/1000)}});}
+        if(action==="save"){const saved=await env.AJCHAT_DB.prepare("SELECT 1 FROM saved_posts WHERE post_id=? AND user_id=?").bind(postId,user.id).first();if(saved){await env.AJCHAT_DB.prepare("DELETE FROM saved_posts WHERE post_id=? AND user_id=?").bind(postId,user.id).run()}else await env.AJCHAT_DB.prepare("INSERT INTO saved_posts(post_id,user_id) VALUES(?,?)").bind(postId,user.id).run();return json(request,{ok:true,saved:!saved});}
+        if(action==="delete"){if(Number(post.author_id)!==Number(user.id))return json(request,{error:"Only the author can delete this post."},403);await env.AJCHAT_DB.prepare("DELETE FROM posts WHERE id=?").bind(postId).run();return json(request,{ok:true,deleted:true});}
+      }
+
+      const commentsMatch=url.pathname.match(/^\/api\/social\/posts\/(\d+)\/comments$/);
+      if(commentsMatch && request.method==="GET"){const postId=Number(commentsMatch[1]);const rows=await env.AJCHAT_DB.prepare("SELECT c.id,c.body,c.created_at,u.username,COALESCE(p.avatar,'✨') AS avatar FROM post_comments c JOIN users u ON u.id=c.user_id LEFT JOIN profiles p ON p.user_id=u.id WHERE c.post_id=? ORDER BY c.id ASC LIMIT 100").bind(postId).all();return json(request,{comments:rows.results||[]});}
+
+      if (url.pathname === "/api/social/explore" && request.method === "GET") {
+        const q=cleanProfileText(url.searchParams.get("q"),60);const like="%"+q+"%";
+        const people=await env.AJCHAT_DB.prepare("SELECT u.id,u.username,COALESCE(p.avatar,'✨') AS avatar,COALESCE(p.bio,'') AS bio,EXISTS(SELECT 1 FROM follows f WHERE f.follower_id=? AND f.following_id=u.id) AS following FROM users u LEFT JOIN profiles p ON p.user_id=u.id WHERE u.id<>? AND (?='' OR u.username LIKE ? COLLATE NOCASE) ORDER BY u.username COLLATE NOCASE LIMIT 30").bind(user.id,user.id,q,like).all();
+        const posts=await env.AJCHAT_DB.prepare("SELECT p.id,p.body,p.media_url,p.created_at,u.username,COALESCE(pr.avatar,'✨') AS avatar,(SELECT COUNT(*) FROM post_likes l WHERE l.post_id=p.id) AS like_count FROM posts p JOIN users u ON u.id=p.author_id LEFT JOIN profiles pr ON pr.user_id=p.author_id WHERE ?='' OR p.body LIKE ? COLLATE NOCASE ORDER BY p.id DESC LIMIT 30").bind(q,like).all();
+        return json(request,{people:(people.results||[]).map(x=>({...x,following:Boolean(Number(x.following))})),posts:(posts.results||[]).map(x=>({...x,id:Number(x.id),like_count:Number(x.like_count||0)}))});
+      }
+
+      if(url.pathname==="/api/social/stories" && request.method==="GET"){
+        const rows=await env.AJCHAT_DB.prepare("SELECT s.id,s.user_id,s.body,s.media_url,s.created_at,s.expires_at,u.username,COALESCE(p.avatar,'✨') AS avatar,EXISTS(SELECT 1 FROM story_views v WHERE v.story_id=s.id AND v.user_id=?) AS viewed FROM stories s JOIN users u ON u.id=s.user_id LEFT JOIN profiles p ON p.user_id=u.id WHERE s.expires_at>unixepoch() AND (s.user_id=? OR EXISTS(SELECT 1 FROM follows f WHERE f.follower_id=? AND f.following_id=s.user_id) OR EXISTS(SELECT 1 FROM friendships fr WHERE fr.user_id=? AND fr.friend_id=s.user_id)) ORDER BY s.id DESC LIMIT 100").bind(user.id,user.id,user.id,user.id).all();
+        return json(request,{stories:(rows.results||[]).map(x=>({...x,id:Number(x.id),viewed:Boolean(Number(x.viewed))}))});
+      }
+
+      if(url.pathname==="/api/social/stories" && request.method==="POST"){const body=await bodyJson(request);const text=cleanProfileText(body.body,240);if(!text)return json(request,{error:"Story cannot be empty."},400);const inserted=await env.AJCHAT_DB.prepare("INSERT INTO stories(user_id,body,media_url,expires_at) VALUES(?,?,?,unixepoch()+86400)").bind(user.id,text,cleanProfileText(body.media_url,500)).run();return json(request,{ok:true,id:Number(inserted.meta?.last_row_id||0)},201);}
+
+      const storyView=url.pathname.match(/^\/api\/social\/stories\/(\d+)\/view$/);
+      if(storyView && request.method==="POST"){const storyId=Number(storyView[1]);const story=await env.AJCHAT_DB.prepare("SELECT id,user_id FROM stories WHERE id=? AND expires_at>unixepoch()").bind(storyId).first();if(!story)return json(request,{error:"Story not found."},404);await env.AJCHAT_DB.prepare("INSERT OR REPLACE INTO story_views(story_id,user_id,viewed_at) VALUES(?,?,unixepoch())").bind(storyId,user.id).run();return json(request,{ok:true});}
+
+      const socialProfile=url.pathname.match(/^\/api\/social\/profile\/([^/]+)$/);
+      if(socialProfile && request.method==="GET"){
+        const username=decodeURIComponent(socialProfile[1]);const target=await env.AJCHAT_DB.prepare("SELECT id,username FROM users WHERE username=? COLLATE NOCASE").bind(username).first();if(!target)return json(request,{error:"User not found."},404);
+        const profile=await ensureProfile(env.AJCHAT_DB,target.id);
+        const [posts,counts,follow] = await Promise.all([env.AJCHAT_DB.prepare("SELECT p.id,p.body,p.media_url,p.created_at,(SELECT COUNT(*) FROM post_likes l WHERE l.post_id=p.id) AS like_count,(SELECT COUNT(*) FROM post_comments c WHERE c.post_id=p.id) AS comment_count,EXISTS(SELECT 1 FROM post_likes l2 WHERE l2.post_id=p.id AND l2.user_id=?) AS liked FROM posts p WHERE p.author_id=? ORDER BY p.id DESC LIMIT 50").bind(user.id,target.id).all(),env.AJCHAT_DB.prepare("SELECT (SELECT COUNT(*) FROM follows WHERE following_id=?) AS followers,(SELECT COUNT(*) FROM follows WHERE follower_id=?) AS following,(SELECT COUNT(*) FROM posts WHERE author_id=?) AS posts").bind(target.id,target.id,target.id).first(),env.AJCHAT_DB.prepare("SELECT 1 FROM follows WHERE follower_id=? AND following_id=?").bind(user.id,target.id).first()]);
+        return json(request,{username:target.username,initials:initials(target.username),profile:{bio:profile?.bio||"",status:profile?.status||"Available to chat",avatar:profile?.avatar||"✨"},stats:{followers:Number(counts?.followers||0),following:Number(counts?.following||0),posts:Number(counts?.posts||0)},following:Boolean(follow),self:Number(target.id)===Number(user.id),posts:(posts.results||[]).map(x=>({...x,id:Number(x.id),like_count:Number(x.like_count||0),comment_count:Number(x.comment_count||0),liked:Boolean(Number(x.liked))}))});
+      }
+
+      if(url.pathname==="/api/social/notifications" && request.method==="GET"){const rows=await env.AJCHAT_DB.prepare("SELECT n.id,n.type,n.body,n.created_at,n.read_at,u.username,COALESCE(p.avatar,'✨') AS avatar,n.post_id FROM notifications n LEFT JOIN users u ON u.id=n.actor_id LEFT JOIN profiles p ON p.user_id=n.actor_id WHERE n.user_id=? ORDER BY n.id DESC LIMIT 50").bind(user.id).all();return json(request,{notifications:rows.results||[]});}
+      if(url.pathname==="/api/social/notifications/read" && request.method==="POST"){await env.AJCHAT_DB.prepare("UPDATE notifications SET read_at=unixepoch() WHERE user_id=? AND read_at IS NULL").bind(user.id).run();return json(request,{ok:true});}
 
       if (url.pathname === "/api/auth/change-password" && request.method === "POST") {
         const body = await bodyJson(request);

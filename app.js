@@ -123,12 +123,10 @@ async function submitAuth(event){
 
     Promise.all([
       loadFriends(false),
-      loadGroups(false),
       loadFriendRequests()
     ]).then(async()=>{
       renderFriendList();
       if(state.friends.length) await selectFriend(state.friends[0].username);
-      else if(state.groups.length) await selectGroup(state.groups[0].id);
       else renderEmptyFriends();
     }).catch(()=>{
       renderFriendList();
@@ -380,20 +378,17 @@ async function boot(){
     showAuth(false);
     refreshNotificationPrompt();
     syncPushSubscription().catch(()=>{});
-    connectCallSocket();
     startPresence();
     startFriendRefresh();
     startFriendRequestRefresh();
 
     Promise.all([
       loadFriends(false),
-      loadGroups(false),
       loadFriendRequests()
     ]).then(async()=>{
       renderFriendList();
-      if(!state.activeFriend && !state.activeGroup){
+      if(!state.activeFriend){
         if(state.friends.length) await selectFriend(state.friends[0].username);
-        else if(state.groups.length) await selectGroup(state.groups[0].id);
         else renderEmptyFriends();
       }
     }).catch(()=>{
@@ -460,7 +455,7 @@ async function loadFriends(shouldRender=true){
     state.activeFriend=null;
   }
   renderOnlineFriends();
-  if(!state.friends.length && !state.groups.length) renderEmptyFriends();
+  if(!state.friends.length) renderEmptyFriends();
 }
 
 async function loadGroups(shouldRender=true){
@@ -519,8 +514,6 @@ function renderFriendList(){
     if(filter==="unread") return Number(friend.unread_count||0)>0;
     return true;
   });
-  const groups=state.groups.filter(group => filter!=="unread" && filter==="groups" || filter==="all");
-
   friends.forEach(friend=>{
     const button=document.createElement("button");
     button.type="button";
@@ -555,7 +548,7 @@ function renderFriendList(){
     showChatItem(button);
   });
 
-  if(!chatList.children.length && (state.friends.length||state.groups.length)){
+  if(!chatList.children.length && state.friends.length){
     chatList.innerHTML='<div class="empty-friends"><strong>No chats in this filter.</strong><span>Switch back to All to see your conversations.</span></div>';
   }
 }
@@ -728,8 +721,7 @@ function connectCallSocket(){
 function waitForCallSocket(timeout=7000){
   if(state.callSocket?.readyState===WebSocket.OPEN)return Promise.resolve(true);
   if(!state.token)return Promise.resolve(false);
-  connectCallSocket();
-  return new Promise(resolve=>{
+    return new Promise(resolve=>{
     const started=Date.now();
     const timer=setInterval(()=>{
       if(state.callSocket?.readyState===WebSocket.OPEN){clearInterval(timer);resolve(true);return}
@@ -1286,12 +1278,9 @@ async function addFriend(){
 }
 
 document.querySelectorAll(".social-tab").forEach(button=>button.addEventListener("click",()=>loadSocial(button.dataset.socialTab)));
-el("socialHomeButton")?.addEventListener("click",()=>loadSocial("home"));
 el("globalChatButton")?.addEventListener("click",()=>loadSocial("global"));
 el("enableNotificationsButton")?.addEventListener("click",ensureNotifications);
-el("socialExploreButton")?.addEventListener("click",()=>loadSocial("explore"));
-el("socialNotifyButton")?.addEventListener("click",()=>loadSocial("notifications"));
-el("socialProfileButton")?.addEventListener("click",()=>loadSocial("profile"));
+el("socialProfileButton")?.addEventListener("click",()=>openProfile(state.me?.username,true));
 el("socialCloseButton")?.addEventListener("click",closeSocial);
 el("socialContent")?.addEventListener("click",async event=>{
   const postButton=event.target.closest("[data-post-action]");if(postButton){const card=postButton.closest("[data-post-id]");if(card)await togglePostAction(Number(card.dataset.postId),postButton.dataset.postAction);return}
@@ -1307,7 +1296,6 @@ el("socialContent")?.addEventListener("click",async event=>{
 });
 el("composer").addEventListener("submit",event=>{event.preventDefault();sendMessage()});
 el("newChatButton").addEventListener("click",addFriend);
-el("newGroupButton")?.addEventListener("click",createGroup);
 el("backButton").addEventListener("click",()=>sidebar.classList.remove("closed"));
 document.getElementById("messages")?.addEventListener("click",async event=>{
   const b=event.target.closest("button[data-action]");if(!b)return;const row=b.closest(".message-row");if(!row)return;
@@ -1322,20 +1310,6 @@ document.getElementById("messages")?.addEventListener("click",async event=>{
 el("cancelReply")?.addEventListener("click",clearReplyTarget);
 el("chatSearchButton")?.addEventListener("click",searchCurrentMessages);
 el("notifyButton")?.addEventListener("click",ensureNotifications);
-el("audioCallButton")?.addEventListener("click",()=>startCall("audio"));
-el("videoCallButton")?.addEventListener("click",()=>startCall("video"));
-el("acceptCallButton")?.addEventListener("click",acceptIncomingCall);
-el("rejectCallButton")?.addEventListener("click",()=>{callSocketSend({type:"call-reject",to_user_id:Number(state.callPeerId||state.incomingCall?.userId||0)});cleanupCall(false)});
-el("callEndButton")?.addEventListener("click",()=>cleanupCall(true));
-el("callMuteButton")?.addEventListener("click",()=>{
-  const track=state.localStream?.getAudioTracks()[0];if(!track)return;
-  track.enabled=!track.enabled;el("callMuteButton").textContent=track.enabled?"🎙":"🔇";
-});
-el("callCameraButton")?.addEventListener("click",()=>{
-  const track=state.localStream?.getVideoTracks()[0];if(!track)return;
-  track.enabled=!track.enabled;el("callCameraButton").textContent=track.enabled?"▣":"◻";
-});
-
 el("profileClose")?.addEventListener("click",closeProfile);
 el("closeProfileButton")?.addEventListener("click",closeProfile);
 el("saveProfileButton")?.addEventListener("click",saveProfile);

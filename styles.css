@@ -1493,3 +1493,174 @@ body{
   .global-entry{width:calc(100% - 18px);margin-inline:9px}
   .notification-prompt{margin-inline:9px}
 }
+
+
+/* =========================
+   AJCHAT CLEAN PREMIUM MOTION
+   ========================= */
+.global-only-label{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:0 11px 9px;
+  color:#7f887f;
+  font-size:.48rem;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.global-only-dot{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#65b79c;
+  box-shadow:0 0 12px rgba(101,183,156,.65);
+  animation:ajPulse 1.8s ease-in-out infinite;
+}
+
+.sidebar .global-entry,
+.sidebar .notification-prompt{
+  animation:ajSlideIn .55s cubic-bezier(.2,.85,.25,1) both;
+}
+.sidebar .notification-prompt{animation-delay:.08s}
+.chat-item{
+  animation:ajChatIn .45s cubic-bezier(.2,.8,.25,1) both;
+}
+.chat-item:nth-child(1){animation-delay:.03s}
+.chat-item:nth-child(2){animation-delay:.06s}
+.chat-item:nth-child(3){animation-delay:.09s}
+.chat-item:nth-child(4){animation-delay:.12s}
+.chat-item:nth-child(5){animation-delay:.15s}
+
+.message-row{
+  animation:ajMessageIn .35s cubic-bezier(.2,.85,.25,1) both;
+}
+.message-row.me{
+  animation-name:ajMessageInRight;
+}
+.global-message{
+  animation:ajMessageIn .38s cubic-bezier(.2,.85,.25,1) both;
+}
+.global-message:nth-child(2){animation-delay:.03s}
+.global-message:nth-child(3){animation-delay:.06s}
+.global-message:nth-child(4){animation-delay:.09s}
+.global-message:nth-child(5){animation-delay:.12s}
+
+.global-entry-icon{
+  position:relative;
+  overflow:hidden;
+}
+.global-entry-icon::after{
+  content:"";
+  position:absolute;
+  inset:-30%;
+  background:linear-gradient(110deg,transparent 35%,rgba(255,255,255,.42) 48%,transparent 61%);
+  transform:translateX(-120%) rotate(8deg);
+  animation:ajShine 3.8s ease-in-out infinite;
+}
+
+.send-button,
+.auth-submit,
+.primary-social,
+.notification-prompt-button{
+  transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;
+}
+.send-button:hover,
+.auth-submit:hover,
+.primary-social:hover,
+.notification-prompt-button:hover{
+  transform:translateY(-2px) scale(1.015);
+  filter:brightness(1.04);
+  box-shadow:0 15px 34px rgba(201,168,102,.22);
+}
+.send-button:active,
+.auth-submit:active,
+.primary-social:active,
+.notification-prompt-button:active{
+  transform:translateY(0) scale(.97);
+}
+
+.icon-button:active,
+.filter-pill:active,
+.global-entry:active{
+  transform:scale(.94);
+}
+
+.chat-header{
+  position:relative;
+}
+.chat-header::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:-1px;
+  height:1px;
+  background:linear-gradient(90deg,transparent,rgba(240,215,155,.28),transparent);
+  opacity:.65;
+  animation:ajLineGlow 3.6s ease-in-out infinite;
+}
+
+.global-chat-head{
+  position:relative;
+  overflow:hidden;
+}
+.global-chat-head::before{
+  content:"";
+  position:absolute;
+  width:220px;
+  height:220px;
+  right:-110px;
+  top:-120px;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(201,168,102,.16),transparent 68%);
+  animation:ajFloat 5s ease-in-out infinite;
+}
+
+@keyframes ajSlideIn{
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes ajChatIn{
+  from{opacity:0;transform:translateX(-9px)}
+  to{opacity:1;transform:translateX(0)}
+}
+@keyframes ajMessageIn{
+  from{opacity:0;transform:translateY(8px) scale(.985)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes ajMessageInRight{
+  from{opacity:0;transform:translateY(8px) translateX(8px) scale(.985)}
+  to{opacity:1;transform:translateY(0) translateX(0) scale(1)}
+}
+@keyframes ajPulse{
+  0%,100%{opacity:.58;transform:scale(.85)}
+  50%{opacity:1;transform:scale(1.15)}
+}
+@keyframes ajShine{
+  0%,52%{transform:translateX(-120%) rotate(8deg)}
+  72%,100%{transform:translateX(120%) rotate(8deg)}
+}
+@keyframes ajLineGlow{
+  0%,100%{opacity:.25}
+  50%{opacity:.85}
+}
+@keyframes ajFloat{
+  0%,100%{transform:translate3d(0,0,0)}
+  50%{transform:translate3d(-14px,12px,0)}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .global-only-dot,
+  .sidebar .global-entry,
+  .sidebar .notification-prompt,
+  .chat-item,
+  .message-row,
+  .global-message,
+  .global-entry-icon::after,
+  .chat-header::after,
+  .global-chat-head::before{
+    animation:none !important;
+  }
+  .send-button,.auth-submit,.primary-social,.notification-prompt-button,
+  .icon-button,.filter-pill,.global-entry{transition:none !important}
+}

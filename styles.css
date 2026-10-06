@@ -1057,3 +1057,15 @@ body.light-mode .social-panel{background:linear-gradient(180deg,#f5f8f7,#eef4f2)
   .profile-social-buttons{width:100%;display:grid;grid-template-columns:1fr 1fr}
   .profile-social-buttons .follow-btn{width:100%;min-height:40px}
 }
+
+
+@media (max-width:760px){
+  /* Keep both call actions visible on phones. */
+  .chat-actions .icon-button:nth-child(2),
+  .chat-actions .icon-button:nth-child(3){
+    display:grid;
+  }
+  .chat-actions .icon-button:nth-child(4){
+    display:none;
+  }
+}

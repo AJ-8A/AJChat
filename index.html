@@ -27,8 +27,12 @@
           </div>
 
           <div class="sidebar-actions">
+            <button class="icon-button" id="socialHomeButton" type="button" title="Home">⌂</button>
+            <button class="icon-button" id="socialExploreButton" type="button" title="Explore">⌕</button>
+            <button class="icon-button" id="socialNotifyButton" type="button" title="Notifications">♡</button>
+            <button class="icon-button" id="socialProfileButton" type="button" title="Profile">◎</button>
             <button class="icon-button" id="newChatButton" type="button" aria-label="Start new chat">＋</button>
-            <button class="icon-button" id="newGroupButton" type="button" aria-label="Create group">◎</button>
+            <button class="icon-button" id="newGroupButton" type="button" aria-label="Create group">◈</button>
             <button class="icon-button" id="themeButton" type="button" aria-label="Toggle theme">◐</button>
           </div>
         </header>
@@ -113,6 +117,28 @@
           <input id="messageInput" type="text" maxlength="500" placeholder="Write a message…" autocomplete="off" aria-label="Message">
           <button class="send-button" type="submit" aria-label="Send message">➤</button>
         </form>
+      </section>
+
+      <section class="social-panel hidden" id="socialPanel">
+        <header class="social-header">
+          <div>
+            <span class="eyebrow">AJCHAT SOCIAL</span>
+            <h2 id="socialTitle">Home feed</h2>
+            <p id="socialSubtitle">See what your people are sharing.</p>
+          </div>
+          <button class="icon-button" id="socialCloseButton" type="button">×</button>
+        </header>
+        <div class="social-nav">
+          <button class="social-tab active" data-social-tab="home" type="button">Home</button>
+          <button class="social-tab" data-social-tab="explore" type="button">Explore</button>
+          <button class="social-tab" data-social-tab="stories" type="button">Stories</button>
+          <button class="social-tab" data-social-tab="saved" type="button">Saved</button>
+          <button class="social-tab" data-social-tab="profile" type="button">Profile</button>
+          <button class="social-tab" data-social-tab="notifications" type="button">Notifications</button>
+        </div>
+        <div class="social-content" id="socialContent">
+          <div class="social-loading">Loading your social world…</div>
+        </div>
       </section>
 
       <!-- Friend details panel removed: the main chat stays focused on real conversations. -->

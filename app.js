@@ -240,6 +240,13 @@ function connectGlobalSocket(){
     if(state.globalSocket!==socket)return;
     try{
       const data=JSON.parse(event.data);
+      if(data.type==="history"&&Array.isArray(data.messages)){
+        const merged=new Map();
+        for(const message of state.globalMessages||[]) merged.set(Number(message.id),message);
+        for(const message of data.messages) merged.set(Number(message.id),message);
+        state.globalMessages=[...merged.values()].sort((a,b)=>Number(a.id)-Number(b.id)).slice(-100);
+        renderGlobalMessages();
+      }
       if(data.type==="message"&&data.message){
         state.globalMessages.push(data.message);
         state.globalMessages=state.globalMessages.slice(-100);

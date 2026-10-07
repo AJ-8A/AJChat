@@ -93,12 +93,25 @@
           </div>
 
           <div class="chat-actions">
+            <button class="icon-button" id="historyButton" type="button" title="Chat history">◷</button>
             <button class="icon-button" id="chatSearchButton" type="button" title="Search in chat">⌕</button>
             <button class="icon-button" id="notifyButton" type="button" title="Notifications">♢</button>
           </div>
         </header>
 
         <div class="chat-scene">
+          <div class="nature-scenery" aria-hidden="true">
+            <div class="nature-haze haze-one"></div>
+            <div class="nature-haze haze-two"></div>
+            <div class="nature-hill hill-back"></div>
+            <div class="nature-hill hill-front"></div>
+            <div class="sakura-branch branch-left"></div>
+            <div class="sakura-branch branch-right"></div>
+            <div class="sakura-petals">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+          </div>
           <div class="date-chip">Today</div>
           <div class="messages" id="messages" aria-live="polite"></div>
           <div class="typing-row hidden" id="typingRow">
@@ -196,6 +209,29 @@
       <h2 id="incomingCallName">AJChat user</h2>
       <p id="incomingCallMode">Voice call</p>
       <div class="modal-actions"><button class="button" id="acceptCallButton" type="button">Accept</button><button class="button ghost-button" id="rejectCallButton" type="button">Decline</button></div>
+    </div>
+  </section>
+
+  <section class="history-modal hidden" id="historyModal" aria-hidden="true">
+    <div class="history-card">
+      <header class="history-head">
+        <div>
+          <span class="eyebrow">CHAT HISTORY</span>
+          <h2 id="historyTitle">Conversation history</h2>
+          <p id="historySubtitle">Recent messages from this conversation.</p>
+        </div>
+        <button class="icon-button" id="historyClose" type="button" aria-label="Close history">×</button>
+      </header>
+      <div class="history-tools">
+        <label class="history-search" for="historySearchInput">
+          <span>⌕</span>
+          <input id="historySearchInput" type="search" placeholder="Search this history…" autocomplete="off">
+        </label>
+        <button class="history-refresh" id="historyRefreshButton" type="button">Refresh</button>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">Open a conversation to see its history.</div>
+      </div>
     </div>
   </section>
 

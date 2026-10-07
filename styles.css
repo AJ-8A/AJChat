@@ -3247,3 +3247,309 @@ body.light-mode .history-row:hover{background:rgba(200,167,106,.09);border-color
     opacity:.42;
   }
 }
+
+
+/* =========================================================
+   AJCHAT ULTRA FOREST • CHERRY BLOSSOM CINEMATIC THEME
+   ========================================================= */
+body:not(.light-mode){
+  --forest-0:#030806;
+  --forest-1:#06120d;
+  --forest-2:#0a1b14;
+  --forest-3:#10291e;
+  --moss:#4f775b;
+  --jade:#78a987;
+  --sakura:#f2a9c0;
+  --sakura-soft:#ffd8e5;
+  --gold:#d7bd78;
+  background:
+    radial-gradient(circle at 15% 10%,rgba(117,161,122,.16),transparent 28%),
+    radial-gradient(circle at 82% 8%,rgba(242,169,192,.13),transparent 25%),
+    linear-gradient(135deg,#020504 0%,#07100c 42%,#030807 100%);
+}
+
+body:not(.light-mode) .ambient{
+  filter:blur(20px);
+  opacity:.5;
+}
+
+body:not(.light-mode) .app-shell{
+  background:
+    radial-gradient(circle at 50% -10%,rgba(153,198,154,.08),transparent 36%),
+    linear-gradient(180deg,rgba(7,17,12,.92),rgba(2,7,5,.96));
+}
+
+body:not(.light-mode) .messenger{
+  border-color:rgba(193,219,190,.12);
+  background:
+    linear-gradient(145deg,rgba(18,35,27,.91),rgba(5,12,9,.96)),
+    radial-gradient(circle at 80% 0%,rgba(239,173,198,.05),transparent 26%);
+  box-shadow:
+    0 30px 90px rgba(0,0,0,.62),
+    0 0 0 1px rgba(215,189,120,.04),
+    inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+body:not(.light-mode) .sidebar,
+body:not(.light-mode) .chat-header{
+  background:
+    linear-gradient(180deg,rgba(13,31,22,.92),rgba(5,14,10,.88));
+  border-color:rgba(166,201,166,.09);
+}
+
+body:not(.light-mode) .sidebar{
+  box-shadow:inset -1px 0 0 rgba(255,255,255,.025);
+}
+
+body:not(.light-mode) .brand-mark{
+  background:
+    radial-gradient(circle at 35% 28%,#f4ceda 0 9%,transparent 10%),
+    linear-gradient(145deg,#b97d95,#5b8063 55%,#173422);
+  border-color:rgba(255,220,232,.26);
+  box-shadow:
+    0 10px 30px rgba(0,0,0,.34),
+    0 0 24px rgba(242,169,192,.09);
+}
+
+body:not(.light-mode) .search-box,
+body:not(.light-mode) .global-entry,
+body:not(.light-mode) .notification-prompt,
+body:not(.light-mode) .chat-item,
+body:not(.light-mode) .filter-pill{
+  background:linear-gradient(145deg,rgba(24,47,35,.68),rgba(7,17,12,.82));
+  border-color:rgba(173,207,176,.10);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+}
+
+body:not(.light-mode) .chat-item:hover,
+body:not(.light-mode) .chat-item:focus-visible,
+body:not(.light-mode) .chat-item.active{
+  border-color:rgba(242,169,192,.22);
+  background:
+    radial-gradient(circle at 100% 0%,rgba(242,169,192,.08),transparent 35%),
+    linear-gradient(145deg,rgba(31,59,42,.84),rgba(7,18,13,.94));
+}
+
+body:not(.light-mode) .filter-pill.active{
+  color:#fff0f5;
+  border-color:rgba(242,169,192,.28);
+  background:linear-gradient(135deg,rgba(122,76,92,.48),rgba(32,65,45,.62));
+  box-shadow:0 8px 24px rgba(242,169,192,.08);
+}
+
+body:not(.light-mode) .chat-scene{
+  isolation:isolate;
+  background:
+    radial-gradient(circle at 76% 13%,rgba(255,220,230,.16),transparent 9%),
+    radial-gradient(circle at 78% 14%,rgba(255,236,231,.055),transparent 18%),
+    linear-gradient(180deg,#08150f 0%,#0b2117 37%,#07130d 72%,#040907 100%);
+}
+
+body:not(.light-mode) .chat-scene::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse at 50% 44%,rgba(201,228,191,.07),transparent 37%),
+    radial-gradient(ellipse at 50% 80%,rgba(2,8,5,.18),transparent 46%);
+  mix-blend-mode:screen;
+}
+
+body:not(.light-mode) .nature-scenery{
+  opacity:1;
+  filter:saturate(1.08) contrast(1.04);
+}
+
+body:not(.light-mode) .nature-scenery::before{
+  content:"";
+  position:absolute;
+  width:190px;
+  height:190px;
+  top:7%;
+  right:11%;
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 40% 38%,rgba(255,242,235,.98) 0 16%,rgba(255,211,224,.28) 35%,rgba(244,169,194,.10) 54%,transparent 70%);
+  box-shadow:0 0 75px rgba(255,214,225,.10);
+  animation:forestMoonBreath 7s ease-in-out infinite;
+}
+
+body:not(.light-mode) .nature-scenery::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:4%;
+  height:28%;
+  background:
+    radial-gradient(circle at 12% 55%,rgba(215,189,120,.20) 0 1px,transparent 2px),
+    radial-gradient(circle at 24% 28%,rgba(242,169,192,.22) 0 1px,transparent 2px),
+    radial-gradient(circle at 44% 72%,rgba(215,189,120,.15) 0 1px,transparent 2px),
+    radial-gradient(circle at 68% 36%,rgba(242,169,192,.18) 0 1px,transparent 2px),
+    radial-gradient(circle at 88% 62%,rgba(215,189,120,.18) 0 1px,transparent 2px);
+  opacity:.9;
+  animation:forestFireflyDrift 11s ease-in-out infinite alternate;
+}
+
+body:not(.light-mode) .nature-haze{
+  opacity:.55;
+  filter:blur(10px);
+  background:radial-gradient(ellipse,rgba(175,211,174,.10),transparent 70%);
+}
+
+body:not(.light-mode) .hill-back{
+  background:
+    linear-gradient(180deg,rgba(29,63,44,.55),rgba(6,20,13,.72)),
+    radial-gradient(ellipse at 30% 75%,rgba(67,103,71,.24),transparent 42%);
+  filter:blur(.3px);
+}
+
+body:not(.light-mode) .hill-front{
+  background:
+    linear-gradient(180deg,rgba(9,31,19,.55),rgba(2,9,6,.95)),
+    radial-gradient(ellipse at 70% 30%,rgba(62,105,68,.16),transparent 42%);
+  box-shadow:0 -30px 70px rgba(52,91,61,.10);
+}
+
+body:not(.light-mode) .sakura-branch{
+  filter:
+    drop-shadow(0 10px 20px rgba(0,0,0,.34))
+    drop-shadow(0 0 10px rgba(242,169,192,.07));
+}
+
+body:not(.light-mode) .sakura-branch::before,
+body:not(.light-mode) .sakura-branch::after{
+  opacity:.98;
+}
+
+body:not(.light-mode) .sakura-petals i{
+  box-shadow:
+    0 3px 10px rgba(0,0,0,.20),
+    0 0 7px rgba(255,185,207,.14);
+  background:
+    radial-gradient(circle at 34% 30%,#fff3f7 0 16%,transparent 17%),
+    radial-gradient(circle at 50% 55%,#f4b2c7 0 44%,#bd6d87 78%,#6f4451 100%);
+}
+
+body:not(.light-mode) .message{
+  background:
+    linear-gradient(145deg,rgba(26,50,37,.82),rgba(8,17,12,.87)),
+    radial-gradient(circle at 100% 0%,rgba(242,169,192,.06),transparent 30%);
+  border-color:rgba(185,215,184,.10);
+  box-shadow:
+    0 14px 30px rgba(0,0,0,.24),
+    inset 0 1px 0 rgba(255,255,255,.035);
+  backdrop-filter:blur(16px);
+}
+
+body:not(.light-mode) .message-row.mine .message{
+  background:
+    linear-gradient(145deg,rgba(108,74,89,.78),rgba(38,57,43,.82)),
+    radial-gradient(circle at 0% 0%,rgba(255,220,231,.08),transparent 34%);
+  border-color:rgba(245,190,207,.15);
+  box-shadow:
+    0 16px 32px rgba(0,0,0,.27),
+    0 0 26px rgba(242,169,192,.055),
+    inset 0 1px 0 rgba(255,255,255,.055);
+}
+
+body:not(.light-mode) .composer{
+  background:
+    linear-gradient(180deg,rgba(7,16,11,.84),rgba(3,9,6,.96));
+  border-top-color:rgba(198,220,198,.08);
+}
+
+body:not(.light-mode) .composer input{
+  background:rgba(22,40,30,.78);
+  border-color:rgba(185,214,185,.11);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);
+}
+
+body:not(.light-mode) .send-button{
+  background:
+    radial-gradient(circle at 28% 22%,rgba(255,239,244,.32),transparent 22%),
+    linear-gradient(145deg,#be8097,#5e8566);
+  color:#fff8fa;
+  border-color:rgba(255,229,237,.18);
+  box-shadow:
+    0 10px 26px rgba(0,0,0,.28),
+    0 0 28px rgba(242,169,192,.09);
+}
+
+body:not(.light-mode) .chat-actions .icon-button:hover,
+body:not(.light-mode) .sidebar-actions .icon-button:hover{
+  border-color:rgba(242,169,192,.24);
+  color:#ffe7ef;
+  box-shadow:0 0 24px rgba(242,169,192,.08);
+}
+
+body:not(.light-mode) .history-card,
+body:not(.light-mode) .pro-modal-card,
+body:not(.light-mode) .call-card,
+body:not(.light-mode) .incoming-call-card{
+  background:
+    linear-gradient(145deg,rgba(18,38,27,.96),rgba(4,11,7,.98)),
+    radial-gradient(circle at 100% 0%,rgba(242,169,192,.07),transparent 30%);
+  border-color:rgba(242,198,214,.13);
+  box-shadow:
+    0 35px 90px rgba(0,0,0,.62),
+    0 0 40px rgba(83,121,91,.07);
+  backdrop-filter:blur(24px);
+}
+
+body:not(.light-mode) .history-row:hover,
+body:not(.light-mode) .history-row:focus-visible{
+  border-color:rgba(242,169,192,.18);
+  background:linear-gradient(145deg,rgba(47,70,51,.78),rgba(18,34,24,.88));
+}
+
+body:not(.light-mode) .history-avatar,
+body:not(.light-mode) .social-avatar{
+  background:
+    radial-gradient(circle at 32% 25%,rgba(255,239,244,.45),transparent 18%),
+    linear-gradient(145deg,#9d6980,#4f775b);
+  border-color:rgba(255,221,231,.14);
+}
+
+@keyframes forestMoonBreath{
+  0%,100%{transform:scale(.96);opacity:.75}
+  50%{transform:scale(1.04);opacity:1}
+}
+
+@keyframes forestFireflyDrift{
+  0%{transform:translate3d(0,0,0);opacity:.55}
+  50%{transform:translate3d(7px,-5px,0);opacity:1}
+  100%{transform:translate3d(-6px,4px,0);opacity:.68}
+}
+
+@media (max-width:760px){
+  body:not(.light-mode) .chat-scene{
+    background:
+      radial-gradient(circle at 84% 11%,rgba(255,220,230,.13),transparent 12%),
+      linear-gradient(180deg,#07130e 0%,#0a1c13 46%,#040a07 100%);
+  }
+
+  body:not(.light-mode) .nature-scenery::before{
+    width:125px;
+    height:125px;
+    top:8%;
+    right:7%;
+  }
+
+  body:not(.light-mode) .message{
+    backdrop-filter:blur(11px);
+  }
+
+  body:not(.light-mode) .history-card{
+    box-shadow:0 -25px 70px rgba(0,0,0,.56);
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  body:not(.light-mode) .nature-scenery::before,
+  body:not(.light-mode) .nature-scenery::after{
+    animation:none;
+  }
+}

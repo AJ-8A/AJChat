@@ -3014,6 +3014,21 @@ body.light-mode .global-composer button{
 .sakura-petals i:nth-child(16){--px:91%;--pd:12s;--delay:-9s}
 .sakura-petals i:nth-child(17){--px:39%;--pd:20s;--delay:-16s}
 .sakura-petals i:nth-child(18){--px:71%;--pd:15s;--delay:-6s}
+.sakura-petals i:nth-child(19){--px:4%;--pd:13s;--delay:-4s}
+.sakura-petals i:nth-child(20){--px:11%;--pd:18s;--delay:-12s}
+.sakura-petals i:nth-child(21){--px:20%;--pd:14s;--delay:-7s}
+.sakura-petals i:nth-child(22){--px:28%;--pd:21s;--delay:-16s}
+.sakura-petals i:nth-child(23){--px:36%;--pd:12s;--delay:-2s}
+.sakura-petals i:nth-child(24){--px:45%;--pd:17s;--delay:-11s}
+.sakura-petals i:nth-child(25){--px:54%;--pd:13s;--delay:-8s}
+.sakura-petals i:nth-child(26){--px:62%;--pd:19s;--delay:-14s}
+.sakura-petals i:nth-child(27){--px:69%;--pd:11s;--delay:-5s}
+.sakura-petals i:nth-child(28){--px:77%;--pd:16s;--delay:-10s}
+.sakura-petals i:nth-child(29){--px:85%;--pd:20s;--delay:-17s}
+.sakura-petals i:nth-child(30){--px:95%;--pd:14s;--delay:-9s}
+.sakura-petals i:nth-child(31){--px:15%;--pd:22s;--delay:-19s}
+.sakura-petals i:nth-child(32){--px:57%;--pd:18s;--delay:-13s}
+.sakura-petals i:nth-child(33){--px:88%;--pd:15s;--delay:-6s}
 
 .messages,
 .date-chip,
@@ -3556,6 +3571,33 @@ body:not(.light-mode) .social-avatar{
 
 
 /* AJChat ultra forest blossom scene — fixed behind the scrolling chat */
+.messages{position:relative;z-index:3;isolation:isolate}
+.sakura-petals{position:absolute;inset:-8vh 0 -12vh;contain:paint}
+.sakura-petals i{
+  will-change:transform,opacity;
+  animation-timing-function:linear;
+  animation-iteration-count:infinite;
+}
+.chat-loading .chat-loading-spinner{display:none}
+@media(max-width:760px){
+  .nature-scenery{
+    position:fixed;
+    inset:0;
+    contain:layout paint;
+    backface-visibility:hidden;
+  }
+  .sakura-petals i{
+    width:7px;
+    height:5px;
+    filter:none;
+  }
+  .message,.chat-item,.history-card{
+    -webkit-backdrop-filter:none;
+    backdrop-filter:none;
+  }
+  .messages{contain:layout style paint}
+}
+
 .chat-scene{
   isolation:isolate;
   transform:translateZ(0);

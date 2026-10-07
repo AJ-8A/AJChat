@@ -65,6 +65,8 @@ function ensureScrollControl(){
 function updateScrollControl(){
   const button=ensureScrollControl();if(!button)return;
   const distance=messagesBox.scrollHeight-messagesBox.scrollTop-messagesBox.clientHeight;
+  const depth=Math.min(1,Math.max(0,messagesBox.scrollTop/900));
+  messagesBox.closest(".chat-scene")?.style.setProperty("--scroll-depth",depth.toFixed(3));
   button.classList.toggle("hidden",distance<180);
   messagesBox.classList.toggle("chat-scrolling",distance>12);
 }

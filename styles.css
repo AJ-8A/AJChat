@@ -3734,3 +3734,90 @@ body.light-mode .chat-scene{
     linear-gradient(180deg,rgba(232,241,233,.62),rgba(216,229,220,.88)),
     radial-gradient(circle at 70% 12%,rgba(255,214,224,.20),transparent 20%);
 }
+
+
+/* =========================================
+   ULTRA CHERRY BLOSSOM MOTION / SCROLL LOCK
+   ========================================= */
+.chat-scene{
+  position:relative;
+  overflow:hidden;
+  background:
+    linear-gradient(180deg,rgba(7,15,17,.66),rgba(7,13,15,.84)),
+    radial-gradient(circle at 50% 10%,rgba(233,190,202,.10),transparent 30%),
+    radial-gradient(circle at 18% 58%,rgba(82,109,97,.11),transparent 34%),
+    radial-gradient(circle at 82% 44%,rgba(56,88,73,.10),transparent 32%);
+}
+
+.nature-scenery{
+  position:fixed !important;
+  inset:0 !important;
+  width:100vw;
+  height:100dvh;
+  z-index:0;
+  overflow:hidden;
+  pointer-events:none;
+  transform:translateZ(0);
+  backface-visibility:hidden;
+}
+
+.chat-scene > .date-chip,
+.chat-scene > .messages,
+.chat-scene > .typing-row{
+  position:relative;
+  z-index:2;
+}
+
+.sakura-petals i{
+  will-change:transform,opacity;
+  transform-origin:center;
+  animation-timing-function:linear;
+}
+
+@media (max-width:760px){
+  .nature-scenery{
+    opacity:.84;
+    width:100vw;
+    height:100dvh;
+    contain:layout paint;
+  }
+
+  .nature-haze{
+    filter:blur(16px);
+    animation-duration:22s;
+  }
+
+  .nature-hill{
+    filter:none;
+    opacity:.62;
+  }
+
+  .sakura-branch{
+    opacity:.38;
+  }
+
+  .sakura-petals i{
+    width:7px;
+    height:5px;
+    filter:none;
+  }
+
+  /* Keep the fall continuous without making phones do unnecessary work. */
+  .sakura-petals i:nth-child(n+19){
+    display:none;
+  }
+}
+
+@media (max-width:390px){
+  .sakura-petals i{
+    width:6px;
+    height:4px;
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .sakura-petals i{
+    animation:petalFall 18s linear infinite !important;
+    opacity:.28;
+  }
+}

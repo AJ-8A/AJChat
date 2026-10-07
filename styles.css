@@ -4028,3 +4028,28 @@ body::after{
 @media(prefers-reduced-motion:reduce){
   body::before,body::after{animation:none !important}
 }
+
+
+/* AJCHAT PERFORMANCE PASS
+   Keep the visual identity, but avoid expensive effects on smaller devices.
+*/
+.message-row.history-message{animation:none!important;will-change:auto!important}
+@media (max-width:760px){
+  .ambient{display:none!important}
+  .chat-header,.composer{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:rgba(7,17,23,.96)!important}
+  .sidebar{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+  .chat-scene{contain:layout paint}
+  .messages{contain:strict;overscroll-behavior:contain}
+  .nature-haze,.forest-fireflies{display:none!important}
+  .nature-scenery{opacity:.78}
+  .sakura-petals i:nth-child(n+13){display:none!important}
+  .message-row{will-change:auto!important}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms!important;
+    animation-iteration-count:1!important;
+    scroll-behavior:auto!important;
+    transition-duration:.001ms!important;
+  }
+}

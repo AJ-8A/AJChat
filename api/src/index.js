@@ -143,7 +143,7 @@ async function socialNotify(db,{userId,actorId,type,postId=null,storyId=null,bod
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {

@@ -438,6 +438,12 @@ export default {
 
       if (url.pathname === "/api/presence" && request.method === "POST") {
         const now = Math.floor(Date.now() / 1000);
+        const previous = await env.AJCHAT_DB
+          .prepare("SELECT last_seen FROM user_presence WHERE user_id=?")
+          .bind(user.id)
+          .first();
+        const wasOffline = !previous || Number(previous.last_seen || 0) < now - 45;
+
         await env.AJCHAT_DB
           .prepare(`
             INSERT INTO user_presence (user_id, last_seen)
@@ -446,6 +452,11 @@ export default {
           `)
           .bind(user.id, now)
           .run();
+
+        if (wasOffline) {
+          ctx.waitUntil(pushNotifyFriendsOnline(env, user.id, user.username));
+        }
+
         return json(request, { ok: true, online: true });
       }
 
@@ -1236,6 +1247,22 @@ async function pushNotifyUser(env, userId, payload) {
       }
     }
   }));
+}
+
+async function pushNotifyFriendsOnline(env, userId, username) {
+  const rows = await env.AJCHAT_DB
+    .prepare("SELECT CASE WHEN user_id=? THEN friend_id ELSE user_id END AS friend_id FROM friendships WHERE user_id=? OR friend_id=?")
+    .bind(userId, userId, userId)
+    .all();
+
+  await Promise.all((rows.results || []).map(row =>
+    pushNotifyUser(env, Number(row.friend_id), {
+      title: "AJChat",
+      body: "@" + username + " is online now.",
+      url: "/AJChat/",
+      tag: "online-" + userId
+    }).catch(() => {})
+  ));
 }
 
 export class ChatRoom extends DurableObject {

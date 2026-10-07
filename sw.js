@@ -1,5 +1,5 @@
-const CACHE="ajchat-shell-v6";
-self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(["/AJChat/","/AJChat/index.html","/AJChat/styles.css","/AJChat/app.js?v=20261006-mobile-notify-v4","/AJChat/manifest.json","/AJChat/icon.svg"])).then(()=>self.skipWaiting()))});
+const CACHE="ajchat-shell-v7";
+self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(["/AJChat/","/AJChat/index.html","/AJChat/styles.css","/AJChat/app.js?v=20261007-history-sakura","/AJChat/manifest.json","/AJChat/icon.svg"])).then(()=>self.skipWaiting()))});
 self.addEventListener("activate",event=>{event.waitUntil(self.clients.claim())});
 self.addEventListener("push",event=>{
   let data={title:"AJChat",body:"You have a new message.",url:"/AJChat/"};

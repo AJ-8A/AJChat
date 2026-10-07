@@ -3821,3 +3821,145 @@ body.light-mode .chat-scene{
     opacity:.28;
   }
 }
+
+
+/* FINAL: continuous forest + blossom scene while chat scrolls */
+.chat-panel{
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 72% 10%,rgba(255,223,213,.09),transparent 20%),
+    linear-gradient(180deg,rgba(8,18,16,.84),rgba(4,11,9,.96));
+}
+
+.chat-scene{
+  position:relative;
+  overflow:auto !important;
+  isolation:isolate;
+  transform:none !important;
+  background:
+    linear-gradient(180deg,rgba(7,15,17,.48),rgba(7,13,15,.74)),
+    radial-gradient(circle at 50% 10%,rgba(233,190,202,.10),transparent 30%),
+    radial-gradient(circle at 18% 58%,rgba(82,109,97,.12),transparent 34%),
+    radial-gradient(circle at 82% 44%,rgba(56,88,73,.11),transparent 32%);
+}
+
+.nature-scenery{
+  position:fixed !important;
+  inset:0 !important;
+  width:100vw;
+  height:100dvh;
+  z-index:0;
+  overflow:hidden;
+  pointer-events:none;
+  transform:translate3d(0,0,0);
+  backface-visibility:hidden;
+  contain:layout paint;
+  will-change:transform;
+}
+
+.chat-scene > .date-chip,
+.chat-scene > .messages,
+.chat-scene > .typing-row{
+  position:relative;
+  z-index:3;
+}
+
+.sakura-petals{
+  position:absolute;
+  inset:-12vh 0 -16vh;
+  overflow:hidden;
+  contain:paint;
+}
+
+.sakura-petals i{
+  display:block !important;
+  will-change:transform,opacity;
+  animation-iteration-count:infinite;
+  animation-timing-function:linear;
+  transform-origin:center;
+}
+
+/* Extra drifting blossom layers keep the fall visually continuous. */
+.sakura-petals::before,
+.sakura-petals::after{
+  content:"";
+  position:absolute;
+  inset:-18vh -8vw;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse at 8% 10%,rgba(239,196,208,.72) 0 4px,transparent 5px),
+    radial-gradient(ellipse at 18% 32%,rgba(218,163,180,.70) 0 3px,transparent 4px),
+    radial-gradient(ellipse at 27% 5%,rgba(244,213,221,.68) 0 4px,transparent 5px),
+    radial-gradient(ellipse at 38% 26%,rgba(218,163,180,.66) 0 3px,transparent 4px),
+    radial-gradient(ellipse at 49% 13%,rgba(244,213,221,.72) 0 4px,transparent 5px),
+    radial-gradient(ellipse at 60% 34%,rgba(218,163,180,.68) 0 3px,transparent 4px),
+    radial-gradient(ellipse at 71% 8%,rgba(244,213,221,.70) 0 4px,transparent 5px),
+    radial-gradient(ellipse at 83% 29%,rgba(218,163,180,.64) 0 3px,transparent 4px),
+    radial-gradient(ellipse at 94% 15%,rgba(244,213,221,.72) 0 4px,transparent 5px);
+  opacity:.52;
+  animation:petalStreamA 17s linear infinite;
+}
+.sakura-petals::after{
+  transform:scale(1.18);
+  opacity:.28;
+  animation:petalStreamB 23s linear infinite;
+}
+
+@keyframes petalStreamA{
+  0%{transform:translate3d(-2vw,-14vh,0) rotate(-8deg)}
+  100%{transform:translate3d(8vw,118vh,0) rotate(42deg)}
+}
+@keyframes petalStreamB{
+  0%{transform:translate3d(6vw,-20vh,0) rotate(15deg)}
+  100%{transform:translate3d(-10vw,124vh,0) rotate(-55deg)}
+}
+
+/* Slight parallax makes the forest feel deeper, while the blossom stream stays fixed. */
+.forest-moon{transform:translateZ(0);animation:moonGlow 8s ease-in-out infinite alternate}
+.tree-line-back{animation:forestParallaxBack 18s ease-in-out infinite alternate}
+.tree-line-front{animation:forestParallaxFront 13s ease-in-out infinite alternate}
+.branch-left{animation:branchSwayLeft 8s ease-in-out infinite alternate}
+.branch-right{animation:branchSwayRight 9s ease-in-out infinite alternate}
+
+@keyframes moonGlow{
+  from{opacity:.52;box-shadow:0 0 45px rgba(255,213,216,.11),0 0 100px rgba(184,216,201,.06)}
+  to{opacity:.76;box-shadow:0 0 70px rgba(255,213,216,.18),0 0 135px rgba(184,216,201,.10)}
+}
+@keyframes forestParallaxBack{from{transform:translate3d(-1%,0,0)}to{transform:translate3d(1%,1%,0)}}
+@keyframes forestParallaxFront{from{transform:translate3d(1%,1%,0)}to{transform:translate3d(-1%,0,0)}}
+@keyframes branchSwayLeft{from{rotate:16deg}to{rotate:20deg}}
+@keyframes branchSwayRight{from{rotate:-20deg}to{rotate:-16deg}}
+
+@media(max-width:760px){
+  .chat-scene{
+    overflow:auto !important;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+  }
+  .nature-scenery{
+    width:100vw;
+    height:100dvh;
+    opacity:.88;
+    contain:strict;
+  }
+  .nature-haze{filter:blur(13px);animation-duration:25s}
+  .sakura-petals i{
+    width:7px;
+    height:5px;
+    filter:none;
+  }
+  .sakura-petals::before{opacity:.38;animation-duration:20s}
+  .sakura-petals::after{opacity:.20;animation-duration:27s}
+}
+
+@media(max-width:390px){
+  .sakura-petals i{width:6px;height:4px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .forest-moon,.tree-line-back,.tree-line-front,.branch-left,.branch-right,
+  .sakura-petals::before,.sakura-petals::after{
+    animation:none !important;
+  }
+}

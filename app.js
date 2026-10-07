@@ -674,20 +674,36 @@ function formatTime(value){
 async function selectFriend(username){
   if(state.pollTimer){clearInterval(state.pollTimer);state.pollTimer=null;}
   if(state.groupPollTimer){clearInterval(state.groupPollTimer);state.groupPollTimer=null;}
-  if(state.socket){try{state.socket.close()}catch{}}
+  if(state.socket){try{state.socket.close()}catch{} state.socket=null;}
   state.activeGroup=null;
   state.activeFriend=username;
+  state.messages=[];
   renderTyping(false, username);
   renderFriendList();
   const friend=state.friends.find(f=>f.username===username);
   el("chatAvatar").textContent=(friend?.initials||username.slice(0,2)).toUpperCase();
   el("chatName").textContent=username;
-  el("chatStatus").textContent="connecting…";
+  el("chatStatus").textContent="Loading chat…";
   showMobileChat();
+
+  // Paint the chat shell immediately so opening a conversation never looks empty
+  // while the history request is in flight.
+  messagesBox.innerHTML='<div class="empty-chat chat-loading"><strong>Loading conversation…</strong><span>Fetching your latest messages.</span></div>';
+
   try{
+    const expectedFriend=username;
     const data=await api("/api/messages/"+encodeURIComponent(username));
-    state.messages=data.messages||[];
+    if(state.activeFriend!==expectedFriend)return;
+    state.messages=Array.isArray(data.messages)
+      ? data.messages.map(message=>({...message,sender:message.sender||message.username||""}))
+      : [];
     renderMessages();
+
+    // Force one post-layout render after mobile navigation/animation.
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      if(state.activeFriend===expectedFriend) renderMessages();
+    }));
+
     await api("/api/messages/"+encodeURIComponent(username)+"/read",{method:"POST",body:"{}"}).catch(()=>{});
     const active=state.friends.find(f=>f.username===username);
     if(active)active.unread_count=0;
@@ -695,6 +711,9 @@ async function selectFriend(username){
     startPolling();
     connectSocket();
   }catch(error){
+    if(state.activeFriend===username){
+      messagesBox.innerHTML='<div class="empty-chat"><strong>Could not load this chat.</strong><span>'+escapeHTML(error.message)+'</span></div>';
+    }
     showToast(error.message);
   }
 }

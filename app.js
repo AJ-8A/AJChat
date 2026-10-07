@@ -39,7 +39,8 @@ const state = {
   socialRefreshTimer: null,
   globalSocket: null,
   globalMessages: [],
-  globalPollTimer: null
+  globalPollTimer: null,
+  chatLoadSeq: 0
 };
 
 const el = id => document.getElementById(id);
@@ -675,6 +676,7 @@ async function selectFriend(username){
   if(state.pollTimer){clearInterval(state.pollTimer);state.pollTimer=null;}
   if(state.groupPollTimer){clearInterval(state.groupPollTimer);state.groupPollTimer=null;}
   if(state.socket){try{state.socket.close()}catch{} state.socket=null;}
+  const loadSeq=++state.chatLoadSeq;
   state.activeGroup=null;
   state.activeFriend=username;
   state.messages=[];
@@ -693,7 +695,7 @@ async function selectFriend(username){
   try{
     const expectedFriend=username;
     const data=await api("/api/messages/"+encodeURIComponent(username));
-    if(state.activeFriend!==expectedFriend)return;
+    if(state.activeFriend!==expectedFriend || loadSeq!==state.chatLoadSeq)return;
     state.messages=Array.isArray(data.messages)
       ? data.messages.map(message=>({...message,sender:message.sender||message.username||""}))
       : [];
@@ -701,7 +703,7 @@ async function selectFriend(username){
 
     // Force one post-layout render after mobile navigation/animation.
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      if(state.activeFriend===expectedFriend) renderMessages();
+      if(state.activeFriend===expectedFriend && loadSeq===state.chatLoadSeq) renderMessages();
     }));
 
     await api("/api/messages/"+encodeURIComponent(username)+"/read",{method:"POST",body:"{}"}).catch(()=>{});
@@ -722,6 +724,7 @@ async function selectGroup(groupId){
   if(state.pollTimer){clearInterval(state.pollTimer);state.pollTimer=null;}
   if(state.groupPollTimer){clearInterval(state.groupPollTimer);state.groupPollTimer=null;}
   if(state.socket){try{state.socket.close()}catch{} state.socket=null;}
+  ++state.chatLoadSeq;
   state.activeFriend=null;
   state.activeGroup=Number(groupId);
   renderTyping(false);

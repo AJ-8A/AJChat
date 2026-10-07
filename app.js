@@ -1237,6 +1237,7 @@ function startGroupPolling(){
       }
       if(changed){
         state.messages=state.messages.slice(-100);
+        writeChatCache("group",state.activeGroup,state.messages);
         renderMessages();
       }
     }catch{}
@@ -1262,6 +1263,7 @@ function startPolling(){
       }
       if(changed){
         state.messages=state.messages.slice(-100);
+        writeChatCache("dm",state.activeFriend,state.messages);
         renderMessages();
       }
     }catch{}
@@ -1298,6 +1300,8 @@ function connectSocket(retry=0){
         renderTyping(false, expectedFriend);
         if(!state.messages.some(m=>String(m.id)===String(data.message.id))){
           state.messages.push(data.message);
+          state.messages=state.messages.slice(-CHAT_CACHE_LIMIT);
+          writeChatCache("dm",state.activeFriend,state.messages);
           renderMessages();
           notifyIncoming(data.message);
         }
@@ -1347,7 +1351,8 @@ async function sendMessage(){
       const data=await api("/api/groups/"+state.activeGroup+"/messages",{method:"POST",body:JSON.stringify({text,reply_to_id:state.replyTo?.id||null})});
       if(data.message && !state.messages.some(m=>String(m.id)===String(data.message.id))){
         state.messages.push(data.message);
-        state.messages=state.messages.slice(-100);
+        state.messages=state.messages.slice(-CHAT_CACHE_LIMIT);
+        writeChatCache("group",state.activeGroup,state.messages);
         renderMessages();
       }
       input.value="";
@@ -1373,7 +1378,8 @@ async function sendMessage(){
 
     if(data.message && !state.messages.some(m=>String(m.id)===String(data.message.id))){
       state.messages.push(data.message);
-      state.messages=state.messages.slice(-100);
+      state.messages=state.messages.slice(-CHAT_CACHE_LIMIT);
+      writeChatCache("dm",friend,state.messages);
       renderMessages();
     }
 

@@ -1396,9 +1396,12 @@ el("chatMoreButton")?.addEventListener("click",async()=>{
   else await openProfile(state.me?.username,true);
 });
 
+const savedTheme=localStorage.getItem("ajchat_theme");
+if(savedTheme==="light")document.body.classList.add("light-mode");
 el("themeButton").addEventListener("click",()=>{
-  document.body.classList.toggle("light-mode");
-  showToast(document.body.classList.contains("light-mode")?"Soft light mode":"Dark glass mode");
+  const light=document.body.classList.toggle("light-mode");
+  localStorage.setItem("ajchat_theme",light?"light":"dark");
+  showToast(light?"Light theme":"Mature dark theme");
 });
 el("emojiButton").addEventListener("click",()=>el("emojiPanel")?.classList.toggle("hidden"));
 el("emojiPanel")?.addEventListener("click",event=>{const b=event.target.closest("button");if(!b)return;input.value+=b.textContent;input.focus();el("emojiPanel").classList.add("hidden")});input.addEventListener("input",()=>{

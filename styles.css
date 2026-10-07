@@ -2443,3 +2443,429 @@ body::after{
     animation:none!important;
   }
 }
+
+
+/* =========================================
+   MATURE LUXURY THEME + MOBILE REFINEMENT
+   ========================================= */
+:root{
+  --mature-bg:#080c10;
+  --mature-panel:#0d1318;
+  --mature-panel-soft:rgba(18,25,31,.76);
+  --mature-line:rgba(220,210,188,.10);
+  --mature-gold:#c8a76a;
+  --mature-gold-soft:#e1c991;
+  --mature-text:#e9ece9;
+  --mature-muted:#8c9699;
+}
+
+body{
+  background:
+    radial-gradient(circle at 12% 8%,rgba(200,167,106,.055),transparent 25%),
+    radial-gradient(circle at 88% 92%,rgba(54,121,105,.065),transparent 28%),
+    linear-gradient(145deg,#070b0f 0%,#0a1015 45%,#080c10 100%);
+}
+
+.ambient-one{
+  background:rgba(200,167,106,.075);
+  opacity:.55;
+}
+.ambient-two{
+  background:rgba(54,121,105,.075);
+  opacity:.5;
+}
+
+.messenger{
+  border-color:rgba(200,167,106,.14);
+  background:rgba(9,14,18,.88);
+  box-shadow:
+    0 30px 90px rgba(0,0,0,.45),
+    inset 0 1px 0 rgba(255,255,255,.045);
+}
+
+.sidebar,
+.chat-panel{
+  background:rgba(10,16,21,.83);
+}
+
+.sidebar{
+  border-right-color:rgba(220,210,188,.075);
+}
+
+.sidebar-top,
+.chat-header{
+  border-bottom-color:rgba(220,210,188,.075);
+}
+
+.brand-mark{
+  background:linear-gradient(145deg,#e4d2a8,#a98952);
+  color:#17130b;
+  box-shadow:0 9px 24px rgba(0,0,0,.22);
+}
+
+.brand-mark::before{
+  opacity:.55;
+}
+
+.icon-button:hover{
+  background:rgba(200,167,106,.075);
+  border-color:rgba(200,167,106,.14);
+}
+
+.search-box:focus-within{
+  border-color:rgba(200,167,106,.28);
+  box-shadow:0 0 0 4px rgba(200,167,106,.045);
+}
+
+.filter-pill:hover,
+.filter-pill.active{
+  background:rgba(200,167,106,.08);
+  border-color:rgba(200,167,106,.21);
+}
+
+.chat-item:hover{
+  background:rgba(255,255,255,.026);
+  border-color:rgba(220,210,188,.08);
+}
+.chat-item.active{
+  background:linear-gradient(105deg,rgba(200,167,106,.09),rgba(255,255,255,.025));
+  border-color:rgba(200,167,106,.16);
+  box-shadow:inset 3px 0 0 rgba(200,167,106,.72);
+}
+
+.chat-person span,
+.eyebrow{
+  color:var(--mature-gold-soft);
+}
+
+.date-chip{
+  background:rgba(255,255,255,.025);
+  border-color:rgba(220,210,188,.09);
+}
+
+.message{
+  background:rgba(19,27,33,.92);
+  border-color:rgba(220,210,188,.075);
+  box-shadow:0 8px 22px rgba(0,0,0,.12);
+}
+.message-row.me .message{
+  background:linear-gradient(145deg,rgba(39,69,61,.95),rgba(27,49,44,.97));
+  border-color:rgba(157,189,174,.13);
+}
+
+.composer{
+  background:rgba(8,13,17,.93);
+  border-top-color:rgba(220,210,188,.075);
+}
+.composer input{
+  background:rgba(255,255,255,.028);
+  border-color:rgba(220,210,188,.075);
+}
+.composer input:focus{
+  border-color:rgba(200,167,106,.25);
+  box-shadow:0 0 0 4px rgba(200,167,106,.04);
+}
+.send-button{
+  background:linear-gradient(145deg,#e1c991,#b18c4c);
+  color:#16120a;
+  box-shadow:0 9px 24px rgba(0,0,0,.22);
+}
+
+.notification-prompt,
+.global-entry{
+  background:linear-gradient(135deg,rgba(200,167,106,.065),rgba(255,255,255,.018));
+  border-color:rgba(200,167,106,.13);
+}
+
+.global-entry:hover{
+  background:linear-gradient(135deg,rgba(200,167,106,.09),rgba(255,255,255,.025));
+  border-color:rgba(200,167,106,.20);
+}
+
+.primary-social,
+.follow-by-username-form button,
+.global-composer button{
+  background:linear-gradient(145deg,#e1c991,#b18c4c);
+  color:#17130b;
+}
+
+.social-tab:hover,
+.social-tab.active{
+  background:rgba(200,167,106,.075);
+  border-color:rgba(200,167,106,.20);
+}
+
+.social-notification.unread{
+  border-color:rgba(200,167,106,.24);
+  background:rgba(200,167,106,.045);
+}
+
+body.light-mode{
+  --text:#202624;
+  --muted:#68736f;
+  --muted-2:#8a9490;
+  --accent:#356f60;
+  --accent-2:#5a8c79;
+  background:
+    radial-gradient(circle at 8% 10%,rgba(200,167,106,.09),transparent 25%),
+    linear-gradient(145deg,#f3f2ed 0%,#ebece8 50%,#f4f3ef 100%);
+}
+
+body.light-mode .messenger{
+  background:rgba(248,248,245,.84);
+  border-color:rgba(48,57,53,.12);
+}
+
+body.light-mode .sidebar,
+body.light-mode .chat-panel{
+  background:rgba(248,248,245,.76);
+}
+
+body.light-mode .brand-mark{
+  background:linear-gradient(145deg,#e4d2a8,#b99a60);
+  color:#1f1a10;
+}
+
+body.light-mode .chat-item.active{
+  background:linear-gradient(105deg,rgba(200,167,106,.12),rgba(255,255,255,.35));
+  border-color:rgba(150,123,72,.18);
+}
+
+body.light-mode .message{
+  background:rgba(255,255,255,.76);
+  border-color:rgba(42,53,49,.09);
+}
+body.light-mode .message-row.me .message{
+  background:linear-gradient(145deg,#dbe8e2,#cbded5);
+  color:#1d2a25;
+}
+
+body.light-mode .composer{
+  background:rgba(246,247,243,.88);
+}
+
+body.light-mode .send-button,
+body.light-mode .primary-social,
+body.light-mode .follow-by-username-form button,
+body.light-mode .global-composer button{
+  background:linear-gradient(145deg,#8fae9d,#6f9584);
+  color:#102019;
+}
+
+/* Phone: calm, compact, one-handed, mature. */
+@media (max-width:760px){
+  .app-shell{
+    background:#080c10;
+  }
+
+  .messenger{
+    border:0;
+    box-shadow:none;
+    background:#080d11;
+  }
+
+  .sidebar{
+    padding:
+      max(9px,env(safe-area-inset-top))
+      9px
+      max(9px,env(safe-area-inset-bottom));
+  }
+
+  .sidebar-top{
+    min-height:64px;
+  }
+
+  .sidebar-actions{
+    gap:5px;
+  }
+
+  .sidebar-actions .icon-button{
+    width:43px;
+    min-width:43px;
+    height:43px;
+    min-height:43px;
+    border-radius:13px;
+  }
+
+  .search-box{
+    min-height:48px;
+    border-radius:15px;
+  }
+
+  .filter-pill{
+    min-height:41px;
+  }
+
+  .chat-item{
+    min-height:72px;
+    margin-bottom:5px;
+    padding:10px;
+    border-radius:17px;
+  }
+
+  .chat-item .avatar{
+    width:48px;
+    min-width:48px;
+    height:48px;
+    border-radius:15px;
+  }
+
+  .chat-meta strong{
+    font-size:.82rem;
+  }
+
+  .chat-meta p{
+    font-size:.68rem;
+  }
+
+  .chat-header{
+    min-height:68px;
+    padding-top:max(8px,env(safe-area-inset-top));
+  }
+
+  #backButton{
+    width:43px!important;
+    min-width:43px!important;
+    height:43px!important;
+    min-height:43px!important;
+    border-radius:13px;
+  }
+
+  #chatName{
+    max-width:42vw;
+    font-size:.88rem;
+  }
+
+  #chatStatus{
+    max-width:42vw;
+    font-size:.64rem;
+  }
+
+  .chat-actions .icon-button{
+    width:42px!important;
+    min-width:42px!important;
+    height:42px!important;
+    min-height:42px!important;
+  }
+
+  .message-row{
+    max-width:93%;
+  }
+
+  .message{
+    padding:10px 12px 8px;
+    border-radius:17px 17px 17px 5px;
+  }
+
+  .message-text{
+    font-size:.82rem;
+    line-height:1.48;
+  }
+
+  .composer{
+    padding:
+      8px
+      8px
+      max(9px,env(safe-area-inset-bottom));
+    gap:7px;
+  }
+
+  .composer input{
+    height:48px;
+    border-radius:16px;
+    font-size:16px;
+  }
+
+  .send-button{
+    width:48px!important;
+    min-width:48px!important;
+    height:48px!important;
+    border-radius:16px;
+  }
+
+  .social-panel{
+    padding:
+      max(8px,env(safe-area-inset-top))
+      8px
+      max(8px,env(safe-area-inset-bottom));
+    background:#080d11;
+  }
+
+  .social-header{
+    min-height:66px;
+  }
+
+  .social-header h2{
+    font-size:1.02rem;
+  }
+
+  .social-nav{
+    gap:6px;
+    padding:8px 2px;
+  }
+
+  .social-tab{
+    min-height:40px;
+    padding:8px 13px;
+    font-size:.62rem;
+  }
+
+  .social-content{
+    height:calc(100dvh - 96px);
+    padding:4px 1px calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .global-chat-shell{
+    border-radius:18px;
+    background:#0d1419;
+    min-height:0;
+  }
+
+  .global-composer input{
+    height:48px;
+    font-size:16px;
+  }
+
+  .global-composer button{
+    min-width:76px;
+    height:48px;
+  }
+
+  .call-card,
+  .incoming-call-card,
+  .pro-modal-card{
+    border-radius:22px;
+  }
+
+  .call-control{
+    width:54px;
+    height:54px;
+  }
+}
+
+@media (max-width:390px){
+  .brand-mark{
+    width:38px;
+    min-width:38px;
+    height:38px;
+  }
+
+  .sidebar-actions .icon-button{
+    width:40px;
+    min-width:40px;
+    height:40px;
+    min-height:40px;
+  }
+
+  #chatName,#chatStatus{
+    max-width:35vw;
+  }
+
+  .chat-item{
+    min-height:68px;
+  }
+
+  .message-text{
+    font-size:.80rem;
+  }
+}

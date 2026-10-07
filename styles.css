@@ -4053,3 +4053,86 @@ body::after{
     transition-duration:.001ms!important;
   }
 }
+
+/* AJCHAT PRO NATURE + SCROLL EXPERIENCE */
+.chat-scene{
+  --scroll-depth:0;
+  overflow:hidden;
+}
+.messages{
+  scroll-behavior:smooth;
+  scrollbar-width:thin;
+  scrollbar-gutter:stable;
+}
+.messages.chat-scrolling .message-row{
+  transition:transform .22s ease,opacity .22s ease;
+}
+.messages.chat-scrolling .message-row:nth-last-child(-n+6){
+  transform:translateY(calc(var(--scroll-depth,0) * -2px));
+}
+.nature-scenery{
+  transform:translate3d(0,calc(var(--scroll-depth,0) * -12px),0);
+  transition:transform .18s ease-out;
+}
+.chat-scene::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:1;
+  background:
+    radial-gradient(circle at 12% 20%,rgba(255,218,226,.10),transparent 18%),
+    radial-gradient(circle at 86% 72%,rgba(122,183,145,.08),transparent 22%);
+  opacity:.75;
+  animation:natureLightDrift 16s ease-in-out infinite alternate;
+}
+.messages,.date-chip,.typing-row{position:relative;z-index:2}
+.chat-scroll-button{
+  position:absolute;
+  right:22px;
+  bottom:88px;
+  z-index:8;
+  width:44px;
+  height:44px;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:50%;
+  color:#fff;
+  background:rgba(8,20,25,.82);
+  box-shadow:0 10px 30px rgba(0,0,0,.28),0 0 0 1px rgba(255,190,210,.06);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  cursor:pointer;
+  font-size:22px;
+  transition:transform .2s ease,opacity .2s ease,box-shadow .2s ease;
+}
+.chat-scroll-button:hover{transform:translateY(-3px);box-shadow:0 14px 34px rgba(0,0,0,.34),0 0 22px rgba(255,184,208,.12)}
+.chat-scroll-button.hidden{opacity:0;pointer-events:none;transform:translateY(8px)}
+.history-card{
+  box-shadow:0 28px 90px rgba(0,0,0,.48),0 0 60px rgba(255,180,205,.06);
+}
+.history-row{
+  transition:transform .18s ease,background .18s ease,border-color .18s ease;
+}
+.history-row:hover{transform:translateX(4px)}
+.history-row:focus-visible{outline:2px solid rgba(255,205,220,.7);outline-offset:2px}
+.history-focus .message{
+  animation:historyFocus 1.2s ease;
+}
+@keyframes historyFocus{
+  0%,100%{box-shadow:none}
+  35%{box-shadow:0 0 0 2px rgba(255,195,215,.45),0 0 30px rgba(255,174,200,.14)}
+}
+@keyframes natureLightDrift{
+  from{transform:translate3d(-1.5%,-.5%,0) scale(1)}
+  to{transform:translate3d(1.5%,1%,0) scale(1.04)}
+}
+@media(max-width:760px){
+  .chat-scroll-button{right:14px;bottom:78px;width:40px;height:40px}
+  .chat-scene::after{animation-duration:22s;opacity:.55}
+  .nature-scenery{transform:translate3d(0,calc(var(--scroll-depth,0) * -7px),0)}
+}
+@media(prefers-reduced-motion:reduce){
+  .messages{scroll-behavior:auto}
+  .chat-scene::after{animation:none}
+  .chat-scroll-button,.history-row{transition:none}
+}

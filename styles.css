@@ -3963,3 +3963,68 @@ body.light-mode .chat-scene{
     animation:none !important;
   }
 }
+
+/* ULTRA SAKURA FOREST — viewport-fixed blossom stream */
+.app-shell,
+.auth-screen{
+  position:relative;
+  z-index:2;
+}
+body::before{
+  content:"";
+  position:fixed;
+  z-index:1;
+  inset:-14vh -8vw;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse 8px 5px at 4% 12%,rgba(255,217,227,.90) 0 42%,transparent 48%),
+    radial-gradient(ellipse 6px 4px at 12% 58%,rgba(238,184,201,.84) 0 42%,transparent 48%),
+    radial-gradient(ellipse 9px 5px at 21% 27%,rgba(255,226,233,.82) 0 42%,transparent 48%),
+    radial-gradient(ellipse 7px 4px at 31% 77%,rgba(225,164,186,.78) 0 42%,transparent 48%),
+    radial-gradient(ellipse 8px 5px at 42% 42%,rgba(255,215,226,.88) 0 42%,transparent 48%),
+    radial-gradient(ellipse 6px 4px at 53% 16%,rgba(232,175,195,.82) 0 42%,transparent 48%),
+    radial-gradient(ellipse 9px 5px at 63% 66%,rgba(255,224,232,.86) 0 42%,transparent 48%),
+    radial-gradient(ellipse 7px 4px at 74% 31%,rgba(224,160,181,.76) 0 42%,transparent 48%),
+    radial-gradient(ellipse 8px 5px at 84% 82%,rgba(255,217,227,.88) 0 42%,transparent 48%),
+    radial-gradient(ellipse 6px 4px at 94% 49%,rgba(231,173,193,.82) 0 42%,transparent 48%);
+  background-size:100% 100%;
+  filter:drop-shadow(0 5px 8px rgba(255,155,190,.10));
+  opacity:.78;
+  animation:sakuraViewportFall 11s linear infinite;
+  will-change:transform;
+}
+body::after{
+  content:"";
+  position:fixed;
+  z-index:1;
+  inset:-20vh -10vw;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 15% 15%,rgba(255,203,221,.055),transparent 24%),
+    radial-gradient(circle at 78% 26%,rgba(105,161,128,.065),transparent 28%),
+    radial-gradient(circle at 50% 90%,rgba(255,169,197,.045),transparent 25%);
+  opacity:.9;
+  animation:forestGlowDrift 18s ease-in-out infinite alternate;
+}
+@keyframes sakuraViewportFall{
+  0%{transform:translate3d(-2vw,-18vh,0) rotate(-4deg)}
+  25%{transform:translate3d(3vw,14vh,0) rotate(18deg)}
+  50%{transform:translate3d(-2vw,48vh,0) rotate(-12deg)}
+  75%{transform:translate3d(5vw,82vh,0) rotate(24deg)}
+  100%{transform:translate3d(-3vw,122vh,0) rotate(-8deg)}
+}
+@keyframes forestGlowDrift{
+  from{transform:translate3d(-1%,0,0) scale(1)}
+  to{transform:translate3d(1%,1.5%,0) scale(1.03)}
+}
+@media(max-width:760px){
+  body::before{
+    inset:-12vh -14vw;
+    opacity:.64;
+    animation-duration:9s;
+  }
+  body::after{inset:-18vh -14vw;opacity:.72}
+}
+@media(prefers-reduced-motion:reduce){
+  body::before,body::after{animation:none !important}
+}

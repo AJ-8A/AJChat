@@ -16,6 +16,7 @@ const state = {
   pollTimer: null,
   groupPollTimer: null,
   messages: [],
+  historyMessages: [],
   incomingRequests: [],
   outgoingRequests: [],
   presenceTimer: null,
@@ -1077,6 +1078,72 @@ async function saveProfile(){
   try{const data=await api("/api/profile",{method:"PUT",body:JSON.stringify({avatar:el("profileAvatar").value.trim()||"✨",status:el("profileStatus").value.trim(),bio:el("profileBio").value.trim()})});el("profileAvatarPreview").textContent=data.profile.avatar;el("profileStatusPreview").textContent=data.profile.status;showToast("Profile saved.");}
   catch(error){showToast(error.message)}
 }
+function closeHistory(){
+  el("historyModal")?.classList.add("hidden");
+  el("historyModal")?.setAttribute("aria-hidden","true");
+}
+
+function historyMessageMatch(message, query){
+  if(!query)return true;
+  const needle=query.trim().toLowerCase();
+  return String(message.body||"").toLowerCase().includes(needle) ||
+    String(message.sender||"").toLowerCase().includes(needle);
+}
+
+function renderHistoryList(){
+  const list=el("historyList");
+  if(!list)return;
+  const query=(el("historySearchInput")?.value||"").trim();
+  const items=(state.historyMessages||[]).filter(m=>historyMessageMatch(m,query));
+  if(!items.length){
+    list.innerHTML='<div class="history-empty"><strong>No matching messages.</strong><span>Try another word or clear the search.</span></div>';
+    return;
+  }
+  list.innerHTML=items.slice().reverse().map(message=>{
+    const mine=message.sender===state.me?.username;
+    const deleted=Boolean(message.deleted_at);
+    const body=deleted?"This message was deleted.":String(message.body||"");
+    return "<button type='button' class='history-row "+(mine?"mine":"")+" data-history-id='"+String(message.id)+"'>"+
+      "<span class='history-avatar'>"+escapeHTML(String(message.sender||"AJ").slice(0,2).toUpperCase())+"</span>"+
+      "<span class='history-row-body'><span class='history-row-top'><strong>"+(mine?"You":"@"+escapeHTML(message.sender||"AJ"))+"</strong><time>"+formatTime(message.created_at)+"</time></span>"+
+      "<span class='history-row-text'>"+escapeHTML(body)+"</span></span></button>";
+  }).join("");
+}
+
+async function openHistory(){
+  if(!state.activeFriend && !state.activeGroup){
+    showToast("Open a conversation first.");
+    return;
+  }
+  const modal=el("historyModal");
+  if(!modal)return;
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden","false");
+  const title=el("historyTitle");
+  const subtitle=el("historySubtitle");
+  const list=el("historyList");
+  const search=el("historySearchInput");
+  if(search)search.value="";
+  if(state.activeFriend){
+    if(title)title.textContent="@"+state.activeFriend;
+    if(subtitle)subtitle.textContent="Your recent private messages.";
+  }else{
+    const group=state.groups.find(g=>Number(g.id)===Number(state.activeGroup));
+    if(title)title.textContent=group?.name||"Group history";
+    if(subtitle)subtitle.textContent="Your recent group messages.";
+  }
+  if(list)list.innerHTML='<div class="history-loading">Loading conversation history…</div>';
+  try{
+    const data=state.activeFriend
+      ? await api("/api/messages/"+encodeURIComponent(state.activeFriend))
+      : await api("/api/groups/"+state.activeGroup+"/messages");
+    state.historyMessages=data.messages||[];
+    renderHistoryList();
+  }catch(error){
+    if(list)list.innerHTML='<div class="history-empty"><strong>Could not load history.</strong><span>'+escapeHTML(error.message)+"</span></div>";
+  }
+}
+
 async function searchCurrentMessages(){
   if(!state.activeFriend){showToast("Open a direct chat to search messages.");return}
   const q=prompt("Search this chat:");if(!q?.trim())return;
@@ -1364,6 +1431,24 @@ document.getElementById("messages")?.addEventListener("click",async event=>{
   if(a==="delete"&&confirm("Delete this message?"))await messageAction(m,"delete");
 });
 el("cancelReply")?.addEventListener("click",clearReplyTarget);
+el("historyButton")?.addEventListener("click",openHistory);
+el("historyClose")?.addEventListener("click",closeHistory);
+el("historyRefreshButton")?.addEventListener("click",openHistory);
+el("historySearchInput")?.addEventListener("input",renderHistoryList);
+el("historyList")?.addEventListener("click",event=>{
+  const row=event.target.closest("[data-history-id]");
+  if(!row)return;
+  const id=row.dataset.historyId;
+  closeHistory();
+  const target=messagesBox.querySelector("[data-message-id='"+CSS.escape(id)+"']");
+  if(target){
+    target.scrollIntoView({behavior:"smooth",block:"center"});
+    target.classList.add("history-focus");
+    setTimeout(()=>target.classList.remove("history-focus"),1200);
+  }else{
+    showToast("That message is outside the currently loaded chat window.");
+  }
+});
 el("chatSearchButton")?.addEventListener("click",searchCurrentMessages);
 el("notifyButton")?.addEventListener("click",ensureNotifications);
 el("profileClose")?.addEventListener("click",closeProfile);

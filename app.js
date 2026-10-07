@@ -702,15 +702,10 @@ async function selectFriend(username){
     renderMessages();
 
     // Force one post-layout render after mobile navigation/animation.
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      if(state.activeFriend===expectedFriend && loadSeq===state.chatLoadSeq) renderMessages();
-    }));
-
-    await api("/api/messages/"+encodeURIComponent(username)+"/read",{method:"POST",body:"{}"}).catch(()=>{});
+        await api("/api/messages/"+encodeURIComponent(username)+"/read",{method:"POST",body:"{}"}).catch(()=>{});
     const active=state.friends.find(f=>f.username===username);
     if(active)active.unread_count=0;
     renderFriendList();
-    startPolling();
     connectSocket();
   }catch(error){
     if(state.activeFriend===username){
@@ -1186,7 +1181,7 @@ function renderMessages(){
   const byId=new Map(state.messages.map(m=>[String(m.id),m]));
   state.messages.forEach((message,index)=>{
     const mine=message.sender===state.me?.username;const row=document.createElement("div");
-    row.className="message-row"+(mine?" me":"");row.dataset.messageId=String(message.id);row.style.animationDelay=(index*18)+"ms";
+    row.className="message-row"+(mine?" me":"")+(index < state.messages.length-6 ? " history-message":"");row.dataset.messageId=String(message.id);row.style.animationDelay=(index >= state.messages.length-6 ? ((index-(state.messages.length-6))*18)+"ms" : "0ms");
     const reply=message.reply_to_id?byId.get(String(message.reply_to_id)):null;const deleted=Boolean(message.deleted_at);
     const counts={};(Array.isArray(message.reactions)?message.reactions:[]).forEach(item=>{counts[item.reaction]=(counts[item.reaction]||0)+1});
     const reactions=Object.entries(counts).map(x=>"<span class='reaction-chip'>"+escapeHTML(x[0])+" "+x[1]+"</span>").join("");
@@ -1217,7 +1212,7 @@ function startGroupPolling(){
     }catch{}
   };
   poll();
-  state.groupPollTimer=setInterval(poll,2500);
+  state.groupPollTimer=setInterval(poll,8000);
 }
 
 function startPolling(){
@@ -1242,7 +1237,7 @@ function startPolling(){
     }catch{}
   };
   poll();
-  state.pollTimer=setInterval(poll,2500);
+  state.pollTimer=setInterval(poll,8000);
 }
 
 function connectSocket(retry=0){
@@ -1255,7 +1250,7 @@ function connectSocket(retry=0){
   state.socket=socket;
   socket.onopen=()=>{
     if(state.socket!==socket || state.activeFriend!==expectedFriend) return;
-    startPolling();
+    if(state.pollTimer){clearInterval(state.pollTimer);state.pollTimer=null;}
     el("chatStatus").textContent="online";
   };
   socket.onmessage=(event)=>{
@@ -1296,9 +1291,9 @@ function connectSocket(retry=0){
     if(document.visibilityState==="hidden") return;
     startPolling();
     el("chatStatus").textContent="Offline — messages will be saved";
-    const delay=Math.min(1600*Math.max(1,retry+1),8000);
+    const delay=Math.min(3000*Math.max(1,retry+1),15000);
     setTimeout(()=>{
-      if(state.activeFriend===expectedFriend && state.token) connectSocket(retry+1);
+      if(state.activeFriend===expectedFriend && state.token && document.visibilityState!=="hidden") connectSocket(retry+1);
     },delay);
   };
   socket.onerror=()=>{

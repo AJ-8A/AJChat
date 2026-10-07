@@ -1300,6 +1300,17 @@ export class ChatRoom extends DurableObject {
     });
 
     server.send(JSON.stringify({ type: "ready", room, online }));
+
+    if (room === "global") {
+      try {
+        const rows = await this.env.AJCHAT_DB
+          .prepare("SELECT gm.id, gm.body, gm.created_at, u.username, COALESCE(p.avatar,'✨') AS avatar FROM global_messages gm JOIN users u ON u.id=gm.sender_id LEFT JOIN profiles p ON p.user_id=gm.sender_id ORDER BY gm.id DESC LIMIT 100")
+          .all();
+        const messages = (rows.results || []).reverse();
+        server.send(JSON.stringify({ type: "history", messages }));
+      } catch {}
+    }
+
     for (const ws of this.ctx.getWebSockets()) {
       if (ws !== server && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "presence", online: true }));

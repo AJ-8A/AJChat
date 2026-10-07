@@ -49,6 +49,27 @@ const sidebar = el("sidebar");
 const chatList = el("chatList");
 const messagesBox = el("messages");
 const input = el("messageInput");
+const CHAT_CACHE_PREFIX="ajchat_history_v2:";
+const CHAT_CACHE_LIMIT=120;
+function chatCacheKey(kind,id){return CHAT_CACHE_PREFIX+kind+":"+String(id||"").toLowerCase()}
+function readChatCache(kind,id){try{const raw=localStorage.getItem(chatCacheKey(kind,id));const data=raw?JSON.parse(raw):[];return Array.isArray(data)?data:[]}catch{return []}}
+function writeChatCache(kind,id,messages){if(!id)return;try{localStorage.setItem(chatCacheKey(kind,id),JSON.stringify((messages||[]).slice(-CHAT_CACHE_LIMIT)))}catch{}}
+function mergeMessages(base,incoming){const map=new Map();[...(base||[]),...(incoming||[])].forEach(m=>{if(m&&m.id!=null)map.set(String(m.id),m)});return [...map.values()].sort((x,y)=>Number(x.id)-Number(y.id)).slice(-CHAT_CACHE_LIMIT)}
+function ensureScrollControl(){
+  if(el("chatScrollButton"))return el("chatScrollButton");
+  const button=document.createElement("button");
+  button.id="chatScrollButton";button.className="chat-scroll-button hidden";button.type="button";button.setAttribute("aria-label","Scroll to latest messages");button.title="Jump to latest";button.textContent="↓";
+  button.addEventListener("click",()=>{messagesBox.scrollTo({top:messagesBox.scrollHeight,behavior:"smooth"});button.classList.add("hidden")});
+  el("chatPanel")?.appendChild(button);return button;
+}
+function updateScrollControl(){
+  const button=ensureScrollControl();if(!button)return;
+  const distance=messagesBox.scrollHeight-messagesBox.scrollTop-messagesBox.clientHeight;
+  const depth=Math.min(1,Math.max(0,messagesBox.scrollTop/900));
+  messagesBox.closest(".chat-scene")?.style.setProperty("--scroll-depth",depth.toFixed(3));
+  button.classList.toggle("hidden",distance<180);
+  messagesBox.classList.toggle("chat-scrolling",distance>12);
+}
 
 function escapeHTML(value){
   return String(value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
@@ -690,15 +711,19 @@ async function selectFriend(username){
 
   // Paint the chat shell immediately so opening a conversation never looks empty
   // while the history request is in flight.
-  messagesBox.innerHTML='<div class="empty-chat chat-loading"><strong>Loading conversation…</strong><span>Fetching your latest messages.</span></div>';
+  const cached=readChatCache("dm",username);
+  if(cached.length){state.messages=cached;renderMessages();el("chatStatus").textContent="Loading latest messages…";}
+  else messagesBox.innerHTML='<div class="empty-chat chat-loading"><strong>Loading conversation…</strong><span>Fetching your latest messages.</span></div>';
 
   try{
     const expectedFriend=username;
     const data=await api("/api/messages/"+encodeURIComponent(username));
     if(state.activeFriend!==expectedFriend || loadSeq!==state.chatLoadSeq)return;
-    state.messages=Array.isArray(data.messages)
+    const serverMessages=Array.isArray(data.messages)
       ? data.messages.map(message=>({...message,sender:message.sender||message.username||""}))
       : [];
+    state.messages=mergeMessages(readChatCache("dm",username),serverMessages);
+    writeChatCache("dm",username,state.messages);
     renderMessages();
 
     // Force one post-layout render after mobile navigation/animation.
@@ -735,7 +760,8 @@ async function selectGroup(groupId){
 
   try{
     const data=await api("/api/groups/"+group.id+"/messages");
-    state.messages=data.messages||[];
+    state.messages=mergeMessages(readChatCache("group",group.id),data.messages||[]);
+    writeChatCache("group",group.id,state.messages);
     renderMessages();
     api("/api/groups/"+group.id+"/read",{method:"POST",body:"{}"}).catch(()=>{});
     startGroupPolling();
@@ -1127,7 +1153,7 @@ function renderHistoryList(){
     const mine=message.sender===state.me?.username;
     const deleted=Boolean(message.deleted_at);
     const body=deleted?"This message was deleted.":String(message.body||"");
-    return "<button type='button' class='history-row "+(mine?"mine":"")+" data-history-id='"+String(message.id)+"'>"+
+    return "<button type='button' class='history-row "+(mine?"mine":"")+"' data-history-id='"+String(message.id)+"'>"+
       "<span class='history-avatar'>"+escapeHTML(String(message.sender||"AJ").slice(0,2).toUpperCase())+"</span>"+
       "<span class='history-row-body'><span class='history-row-top'><strong>"+(mine?"You":"@"+escapeHTML(message.sender||"AJ"))+"</strong><time>"+formatTime(message.created_at)+"</time></span>"+
       "<span class='history-row-text'>"+escapeHTML(body)+"</span></span></button>";
@@ -1158,10 +1184,14 @@ async function openHistory(){
   }
   if(list)list.innerHTML='<div class="history-loading">Loading conversation history…</div>';
   try{
+    const kind=state.activeFriend?"dm":"group";
+    const id=state.activeFriend||state.activeGroup;
+    const cached=readChatCache(kind,id);
     const data=state.activeFriend
       ? await api("/api/messages/"+encodeURIComponent(state.activeFriend))
       : await api("/api/groups/"+state.activeGroup+"/messages");
-    state.historyMessages=data.messages||[];
+    state.historyMessages=mergeMessages(cached,data.messages||[]);
+    writeChatCache(kind,id,state.historyMessages);
     renderHistoryList();
   }catch(error){
     if(list)list.innerHTML='<div class="history-empty"><strong>Could not load history.</strong><span>'+escapeHTML(error.message)+"</span></div>";
@@ -1177,6 +1207,7 @@ async function searchCurrentMessages(){
 
 function renderMessages(){
   messagesBox.innerHTML="";
+  messagesBox.classList.remove("chat-scrolling");
   if(!state.messages.length){messagesBox.innerHTML='<div class="empty-chat"><strong>No messages yet.</strong><span>Say hello — this chat is between real people.</span></div>';return}
   const byId=new Map(state.messages.map(m=>[String(m.id),m]));
   state.messages.forEach((message,index)=>{
@@ -1192,6 +1223,7 @@ function renderMessages(){
     messagesBox.appendChild(row);
   });
   messagesBox.scrollTop=messagesBox.scrollHeight;
+  updateScrollControl();
 }
 function startGroupPolling(){
   if(state.groupPollTimer || !state.activeGroup || !state.token) return;
@@ -1207,6 +1239,7 @@ function startGroupPolling(){
       }
       if(changed){
         state.messages=state.messages.slice(-100);
+        writeChatCache("group",state.activeGroup,state.messages);
         renderMessages();
       }
     }catch{}
@@ -1232,6 +1265,7 @@ function startPolling(){
       }
       if(changed){
         state.messages=state.messages.slice(-100);
+        writeChatCache("dm",state.activeFriend,state.messages);
         renderMessages();
       }
     }catch{}
@@ -1268,6 +1302,8 @@ function connectSocket(retry=0){
         renderTyping(false, expectedFriend);
         if(!state.messages.some(m=>String(m.id)===String(data.message.id))){
           state.messages.push(data.message);
+          state.messages=state.messages.slice(-CHAT_CACHE_LIMIT);
+          writeChatCache("dm",state.activeFriend,state.messages);
           renderMessages();
           notifyIncoming(data.message);
         }
@@ -1317,7 +1353,8 @@ async function sendMessage(){
       const data=await api("/api/groups/"+state.activeGroup+"/messages",{method:"POST",body:JSON.stringify({text,reply_to_id:state.replyTo?.id||null})});
       if(data.message && !state.messages.some(m=>String(m.id)===String(data.message.id))){
         state.messages.push(data.message);
-        state.messages=state.messages.slice(-100);
+        state.messages=state.messages.slice(-CHAT_CACHE_LIMIT);
+        writeChatCache("group",state.activeGroup,state.messages);
         renderMessages();
       }
       input.value="";
@@ -1343,7 +1380,8 @@ async function sendMessage(){
 
     if(data.message && !state.messages.some(m=>String(m.id)===String(data.message.id))){
       state.messages.push(data.message);
-      state.messages=state.messages.slice(-100);
+      state.messages=state.messages.slice(-CHAT_CACHE_LIMIT);
+      writeChatCache("dm",friend,state.messages);
       renderMessages();
     }
 
@@ -1412,6 +1450,8 @@ async function addFriend(){
   }
 }
 
+messagesBox?.addEventListener("scroll",updateScrollControl,{passive:true});
+ensureScrollControl();
 document.querySelectorAll(".social-tab").forEach(button=>button.addEventListener("click",()=>loadSocial(button.dataset.socialTab)));
 el("globalChatButton")?.addEventListener("click",()=>loadSocial("global"));
 el("enableNotificationsButton")?.addEventListener("click",ensureNotifications);

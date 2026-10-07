@@ -3553,3 +3553,142 @@ body:not(.light-mode) .social-avatar{
     animation:none;
   }
 }
+
+
+/* AJChat ultra forest blossom scene — fixed behind the scrolling chat */
+.chat-scene{
+  isolation:isolate;
+  transform:translateZ(0);
+  background:
+    radial-gradient(circle at 50% 5%,rgba(255,232,238,.10),transparent 18%),
+    linear-gradient(180deg,rgba(7,15,14,.68),rgba(5,12,11,.93) 72%,rgba(3,8,7,.98));
+}
+.nature-scenery{
+  position:fixed;
+  inset:0;
+  z-index:0;
+  overflow:hidden;
+  pointer-events:none;
+  transform:translateZ(0);
+  will-change:transform;
+}
+.forest-moon{
+  position:absolute;
+  width:120px;height:120px;
+  right:13%;top:8%;
+  border-radius:50%;
+  background:
+    radial-gradient(circle at 34% 30%,rgba(255,255,255,.9) 0 2px,transparent 3px),
+    radial-gradient(circle at 62% 53%,rgba(255,255,255,.20) 0 8px,transparent 9px),
+    radial-gradient(circle at 39% 66%,rgba(255,255,255,.15) 0 5px,transparent 6px),
+    radial-gradient(circle at 50% 50%,rgba(255,235,224,.88),rgba(236,207,194,.44) 58%,transparent 71%);
+  box-shadow:0 0 55px rgba(255,213,216,.14),0 0 120px rgba(184,216,201,.08);
+  opacity:.66;
+}
+.forest-tree-line{
+  position:absolute;
+  left:-5%;width:110%;
+  bottom:17%;
+  height:34%;
+  opacity:.62;
+  filter:blur(.2px);
+}
+.tree-line-back{
+  background:
+    linear-gradient(135deg,transparent 0 12%,rgba(20,39,32,.86) 12% 15%,transparent 15% 28%,rgba(20,39,32,.72) 28% 32%,transparent 32% 42%,rgba(20,39,32,.76) 42% 46%,transparent 46% 57%,rgba(20,39,32,.74) 57% 61%,transparent 61% 74%,rgba(20,39,32,.84) 74% 78%,transparent 78%),
+    linear-gradient(180deg,transparent 0 56%,rgba(8,20,16,.58) 56%);
+  clip-path:polygon(0 80%,4% 61%,7% 74%,10% 48%,14% 69%,18% 41%,22% 70%,27% 51%,32% 72%,37% 43%,42% 66%,47% 38%,52% 69%,58% 46%,63% 72%,68% 42%,73% 68%,78% 49%,84% 73%,89% 43%,94% 69%,100% 52%,100% 100%,0 100%);
+}
+.tree-line-front{
+  bottom:9%;
+  height:27%;
+  opacity:.78;
+  background:
+    linear-gradient(90deg,rgba(5,15,11,.92),rgba(11,25,20,.75) 50%,rgba(5,14,11,.93)),
+    repeating-linear-gradient(115deg,transparent 0 58px,rgba(37,61,49,.22) 59px 63px);
+  clip-path:polygon(0 72%,5% 51%,8% 69%,13% 44%,18% 73%,24% 49%,30% 70%,36% 40%,43% 71%,50% 46%,57% 72%,64% 43%,71% 70%,78% 48%,85% 69%,92% 42%,100% 66%,100% 100%,0 100%);
+}
+.forest-figures{
+  position:absolute;
+  left:0;right:0;bottom:18%;
+  height:28%;
+  opacity:.8;
+  filter:drop-shadow(0 8px 16px rgba(0,0,0,.34));
+}
+.forest-person{
+  position:absolute;
+  width:22px;height:62px;
+  bottom:3%;
+  border-radius:12px 12px 8px 8px;
+  background:linear-gradient(180deg,rgba(12,27,22,.95),rgba(6,14,12,.98));
+  box-shadow:0 5px 12px rgba(0,0,0,.22);
+  animation:forestBreathe 5s ease-in-out infinite;
+}
+.forest-person::before{
+  content:"";
+  position:absolute;
+  width:14px;height:14px;
+  top:-10px;left:4px;
+  border-radius:50%;
+  background:rgba(8,18,15,.98);
+}
+.forest-person::after{
+  content:"";
+  position:absolute;
+  width:38px;height:9px;
+  left:-8px;bottom:-3px;
+  border-radius:50%;
+  background:rgba(5,12,10,.65);
+  filter:blur(2px);
+}
+.person-left-girl{left:18%;height:64px;transform:scale(.88);animation-delay:-1.1s}
+.person-left-boy{left:25%;height:72px;transform:scale(1.02);animation-delay:-2.2s}
+.person-right-girl{right:23%;height:61px;transform:scale(.84);animation-delay:-3.6s}
+.person-right-boy{right:15%;height:75px;transform:scale(1.05);animation-delay:-.5s}
+.person-left-girl::before,.person-right-girl::before{
+  width:18px;height:18px;left:2px;top:-13px;
+  box-shadow:5px 1px 0 -1px rgba(7,15,13,.95),-4px 3px 0 -2px rgba(7,15,13,.9);
+}
+.person-left-girl::after,.person-right-girl::after{
+  width:52px;
+}
+.forest-fireflies{
+  position:absolute;inset:0;
+}
+.forest-fireflies i{
+  position:absolute;
+  width:4px;height:4px;
+  border-radius:50%;
+  background:#d6f1bd;
+  box-shadow:0 0 10px 3px rgba(205,241,181,.36);
+  animation:fireflyFloat var(--fd) ease-in-out infinite alternate;
+}
+.forest-fireflies i:nth-child(1){left:11%;top:47%;--fd:4.8s}
+.forest-fireflies i:nth-child(2){left:21%;top:39%;--fd:5.9s}
+.forest-fireflies i:nth-child(3){left:31%;top:54%;--fd:6.4s}
+.forest-fireflies i:nth-child(4){left:42%;top:42%;--fd:5.4s}
+.forest-fireflies i:nth-child(5){left:52%;top:51%;--fd:6.8s}
+.forest-fireflies i:nth-child(6){left:61%;top:36%;--fd:5.2s}
+.forest-fireflies i:nth-child(7){left:70%;top:49%;--fd:6.1s}
+.forest-fireflies i:nth-child(8){left:79%;top:40%;--fd:5.6s}
+.forest-fireflies i:nth-child(9){left:88%;top:54%;--fd:6.7s}
+.forest-fireflies i:nth-child(10){left:16%;top:61%;--fd:4.9s}
+.forest-fireflies i:nth-child(11){left:67%;top:60%;--fd:5.7s}
+.forest-fireflies i:nth-child(12){left:93%;top:31%;--fd:6.3s}
+@keyframes forestBreathe{0%,100%{margin-bottom:0;opacity:.66}50%{margin-bottom:3px;opacity:.82}}
+@keyframes fireflyFloat{0%{transform:translate3d(0,0,0) scale(.7);opacity:.2}50%{opacity:.85}100%{transform:translate3d(10px,-13px,0) scale(1.25);opacity:.25}}
+
+@media(max-width:700px){
+  .forest-moon{width:82px;height:82px;right:9%;top:7%;opacity:.5}
+  .forest-figures{bottom:17%;transform:scale(.78);transform-origin:bottom center}
+  .forest-person{opacity:.68}
+  .nature-scenery{inset:0}
+}
+@media(prefers-reduced-motion:reduce){
+  .forest-person,.forest-fireflies i{animation:none!important}
+}
+body.light-mode .chat-scene{
+  background:
+    linear-gradient(180deg,rgba(232,241,233,.62),rgba(216,229,220,.88)),
+    radial-gradient(circle at 70% 12%,rgba(255,214,224,.20),transparent 20%);
+}

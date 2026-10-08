@@ -35,7 +35,7 @@
           <div class="sidebar-actions">
             <button class="icon-button" id="newChatButton" type="button" aria-label="Add friend" title="Add friend">＋</button>
             <button class="icon-button" id="socialProfileButton" type="button" title="Profile">◎</button>
-            <button class="icon-button" id="themeButton" type="button" aria-label="Toggle theme">◐</button>
+            <button class="icon-button" id="themeButton" type="button" aria-label="Toggle transparent theme" title="Transparent theme">◐</button>
           </div>
         </header>
 
@@ -164,7 +164,15 @@
           </div>
           <button class="icon-button" id="socialCloseButton" type="button">×</button>
         </header>
-        <div class="global-only-label"><span class="global-only-dot"></span> Live community room</div>
+        <div class="social-nav">
+  <button class="social-nav-btn active" data-social-tab="home" type="button">Home</button>
+  <button class="social-nav-btn" data-social-tab="daily" type="button">Daily</button>
+  <button class="social-nav-btn global-nav-btn" data-social-tab="global" type="button">🌍 Global</button>
+  <button class="social-nav-btn" data-social-tab="explore" type="button">Explore</button>
+  <button class="social-nav-btn" data-social-tab="stories" type="button">Stories</button>
+  <button class="social-nav-btn" data-social-tab="notifications" type="button">Alerts</button>
+</div>
+<div class="global-only-label hidden" id="globalOnlyLabel"><span class="global-only-dot"></span> Live community room</div>
         <div class="social-content" id="socialContent">
           <div class="social-loading">Loading your social world…</div>
         </div>

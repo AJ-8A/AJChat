@@ -333,3 +333,37 @@ body.light-mode .auth-submit {
   background: rgba(212, 179, 106, 0.28);
   color: #fff;
 }
+
+
+/* AJ DAILY — built on the existing AJChat experience */
+.daily-entry{
+  width:100%;display:flex;align-items:center;gap:12px;text-align:left;
+  margin:8px 0;padding:12px 14px;border-radius:18px;
+  border:1px solid rgba(212,179,106,.22);
+  background:linear-gradient(135deg,rgba(212,179,106,.13),rgba(94,184,154,.07));
+  color:inherit;cursor:pointer;transition:transform .2s ease,border-color .2s ease,background .2s ease;
+}
+.daily-entry:hover{transform:translateY(-1px);border-color:rgba(212,179,106,.45)}
+.daily-entry-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:12px;background:rgba(212,179,106,.18);font-size:18px}
+.daily-entry-copy{display:grid;gap:2px;min-width:0;flex:1}
+.daily-entry-copy strong{font-size:13px}.daily-entry-copy small{font-size:11px;opacity:.62}
+.daily-entry-arrow{opacity:.55}
+.daily-hero{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:24px;border:1px solid rgba(212,179,106,.18);border-radius:24px;background:linear-gradient(135deg,rgba(212,179,106,.12),rgba(94,184,154,.06));box-shadow:0 18px 50px rgba(0,0,0,.16)}
+.daily-hero h3{margin:5px 0 6px;font-size:clamp(22px,4vw,34px)}.daily-hero p{margin:0;opacity:.68}
+.daily-streak{min-width:92px;padding:14px;border-radius:20px;text-align:center;background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.08)}
+.daily-streak span{font-size:22px;display:block}.daily-streak strong{display:block;font-size:26px}.daily-streak small{opacity:.6}
+.daily-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+.daily-card{padding:18px;border-radius:20px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035)}
+.daily-card h4{margin:7px 0 14px;font-size:17px}.daily-choice-row{display:flex;flex-wrap:wrap;gap:8px}
+.daily-choice-row button,.daily-actions button{border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:inherit;padding:9px 11px;border-radius:12px;cursor:pointer}
+.daily-choice-row button.selected{border-color:rgba(212,179,106,.65);background:rgba(212,179,106,.16)}
+.daily-note{display:block;margin-top:12px;opacity:.5;font-size:11px}
+.daily-friend-row{display:flex;gap:9px;overflow:auto;padding-bottom:3px}.daily-friend{border:0;background:none;color:inherit;display:flex;align-items:center;gap:7px;cursor:pointer;min-width:82px;text-align:left}
+.daily-friend-avatar{position:relative;width:38px;height:38px;border-radius:13px;display:grid;place-items:center;background:rgba(212,179,106,.15);font-weight:700}
+.daily-friend-avatar i{position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;background:#555;border:2px solid #101214}.daily-friend-avatar i.on{background:#65d39a}
+.daily-friend span:last-child{display:grid}.daily-friend small{opacity:.5;font-size:10px}
+.daily-online-number{font-size:28px}.daily-actions{display:flex;flex-wrap:wrap;gap:8px}
+.daily-checkin{margin-top:14px;padding:17px 19px;border-radius:20px;border:1px solid rgba(212,179,106,.18);display:flex;align-items:center;justify-content:space-between;gap:15px;background:rgba(212,179,106,.06)}
+.daily-checkin div{display:grid;gap:3px}.daily-checkin small{opacity:.55}
+.daily-checkin button:disabled{opacity:.6;cursor:default}
+@media(max-width:760px){.daily-grid{grid-template-columns:1fr}.daily-hero{padding:18px}.daily-checkin{align-items:flex-start}.daily-checkin button{flex-shrink:0}}

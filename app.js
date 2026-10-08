@@ -100,7 +100,30 @@ function authHeaders(json=false){
   return h;
 }
 
+function handleAuthFailure(message="Your AJChat session has expired. Please sign in again."){
+  const hadToken=Boolean(state.token);
+  state.token="";
+  state.me=null;
+  localStorage.removeItem("ajchat_token");
+  try{state.socket?.close()}catch{}
+  try{state.globalSocket?.close()}catch{}
+  closeCallSocket?.();
+  if(state.pollTimer){clearInterval(state.pollTimer);state.pollTimer=null}
+  if(state.groupPollTimer){clearInterval(state.groupPollTimer);state.groupPollTimer=null}
+  if(state.presenceTimer){clearInterval(state.presenceTimer);state.presenceTimer=null}
+  if(state.friendRefreshTimer){clearInterval(state.friendRefreshTimer);state.friendRefreshTimer=null}
+  if(state.friendRequestTimer){clearInterval(state.friendRequestTimer);state.friendRequestTimer=null}
+  if(hadToken)showToast(message);
+  showAuth(true);
+  setAuthMessage(message,true);
+}
+
 async function api(path,options={}){
+  if(!state.token && !path.startsWith("/api/auth/")){
+    showAuth(true);
+    setAuthMessage("Please sign in to continue.",true);
+    throw new Error("Please sign in to continue.");
+  }
   const response=await fetch(API_BASE+path,{
     ...options,
     headers:{...authHeaders(Boolean(options.body)),...(options.headers||{})},
@@ -108,6 +131,10 @@ async function api(path,options={}){
   });
   let data={};
   try{data=await response.json()}catch{}
+  if(response.status===401 || String(data.error||"").toLowerCase()==="authentication required"){
+    handleAuthFailure();
+    throw new Error("Authentication required. Please sign in again.");
+  }
   if(!response.ok) throw new Error(data.error||"Request failed");
   return data;
 }

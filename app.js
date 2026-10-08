@@ -49,7 +49,18 @@ const sidebar = el("sidebar");
 const chatList = el("chatList");
 const messagesBox = el("messages");
 const input = el("messageInput");
-const CHAT_CACHE_PREFIX="ajchat_history_v2:";
+const CHAT_CACHE_PREFIX="ajchat_history_v3:";
+function clearObsoleteLocalData(){
+  try{
+    for(let i=localStorage.length-1;i>=0;i--){
+      const key=localStorage.key(i)||"";
+      if(key.startsWith("ajchat_history_v1:")||key.startsWith("ajchat_history_v2:"))localStorage.removeItem(key);
+    }
+    localStorage.removeItem("ajchat_daily_v1");
+    localStorage.removeItem("ajchat_daily_challenge");
+  }catch{}
+}
+clearObsoleteLocalData();
 const CHAT_CACHE_LIMIT=120;
 function chatCacheKey(kind,id){return CHAT_CACHE_PREFIX+kind+":"+String(id||"").toLowerCase()}
 function readChatCache(kind,id){try{const raw=localStorage.getItem(chatCacheKey(kind,id));const data=raw?JSON.parse(raw):[];return Array.isArray(data)?data:[]}catch{return []}}
@@ -441,7 +452,8 @@ async function loadSocial(tab=state.socialTab){
   if(state.socialTab==="global"&&tab!=="global")closeGlobalSocket();
   state.socialTab=tab;
   el("chatPanel").classList.add("hidden");el("socialPanel").classList.remove("hidden");
-  document.querySelectorAll(".social-tab").forEach(b=>b.classList.toggle("active",b.dataset.socialTab===tab));
+  document.querySelectorAll(".social-nav-btn").forEach(b=>b.classList.toggle("active",b.dataset.socialTab===tab));
+  el("globalOnlyLabel")?.classList.toggle("hidden",tab!=="global");
   const title={home:"Home feed",daily:"AJ Daily",global:"Global Chat",explore:"Explore",stories:"Stories",saved:"Saved",profile:"Your profile",notifications:"Notifications"}[tab]||"AJChat Social";
   el("socialTitle").textContent=title;el("socialSubtitle").textContent=tab==="daily"?"Your everyday friend dashboard.":tab==="home"?"See what your people are sharing.":tab==="global"?"One public room for the whole AJChat community.":"Discover the AJChat community.";
   el("socialContent").innerHTML="<div class='social-loading'>Loading…</div>";
@@ -1518,7 +1530,7 @@ async function addFriend(){
 
 messagesBox?.addEventListener("scroll",updateScrollControl,{passive:true});
 ensureScrollControl();
-document.querySelectorAll(".social-tab").forEach(button=>button.addEventListener("click",()=>loadSocial(button.dataset.socialTab)));
+document.querySelectorAll(".social-nav-btn").forEach(button=>button.addEventListener("click",()=>loadSocial(button.dataset.socialTab)));
 el("globalChatButton")?.addEventListener("click",()=>loadSocial("global"));
 el("dailyButton")?.addEventListener("click",()=>loadSocial("daily"));
 el("enableNotificationsButton")?.addEventListener("click",ensureNotifications);

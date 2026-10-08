@@ -1,1 +1,4 @@
-/* temporary - will replace */
+/* AJChat styles — split for size; loads full UI + Pro Luxury layer */
+@import url("styles-part1.css");
+@import url("styles-part2.css");
+@import url("luxury.css");

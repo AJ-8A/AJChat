@@ -372,16 +372,82 @@ async function renderProfileSocial(username=state.me?.username){
     "<section class='social-section'><div class='section-head'><div><span class='eyebrow'>POSTS</span><h3>"+(data.self?"Your posts":"@"+escapeHTML(data.username)+"'s posts")+"</h3></div></div><div class='post-feed'>"+((data.posts||[]).map(postCard).join("")||"<div class='social-empty'>No posts yet.</div>")+"</div></section>";
   el("editSocialProfile")?.addEventListener("click",()=>openProfile(state.me.username,true));
 }
+function dailyTodayKey(){return new Date().toISOString().slice(0,10)}
+function dailyRead(){
+  try{return JSON.parse(localStorage.getItem("ajchat_daily_v1")||"{}")}catch{return {}}
+}
+function dailyWrite(data){try{localStorage.setItem("ajchat_daily_v1",JSON.stringify(data))}catch{}}
+function dailyGreeting(){
+  const hour=new Date().getHours();
+  return hour<12?"Good morning":hour<17?"Good afternoon":"Good evening";
+}
+function dailyChallenge(){
+  const challenges=[
+    "Send one friend a genuine compliment 💛",
+    "Start a group chat instead of scrolling alone 💬",
+    "Check in with someone you haven't messaged today 👋",
+    "Win a quick game with a friend 🎮",
+    "Post a tiny update about your day ✨"
+  ];
+  const key="ajchat_daily_challenge";
+  const saved=localStorage.getItem(key);
+  if(saved)return saved;
+  const value=challenges[Math.floor(Math.random()*challenges.length)];
+  localStorage.setItem(key,value);return value;
+}
+function renderDailySocial(){
+  const store=dailyRead(),today=dailyTodayKey();
+  if(store.lastCheckin!==today){
+    store.todayChoice=store.todayChoice||"";
+    dailyWrite(store);
+  }
+  const online=state.friends.filter(f=>f.online);
+  const choice=store.todayChoice||"";
+  const choices=["🔥 Doing great","😴 Tired","📚 Busy","🎮 Free","🌸 Chilling"];
+  const friendCards=state.friends.slice(0,8).map(friend=>"<button class='daily-friend' data-daily-friend='"+escapeHTML(friend.username)+"' type='button'><span class='daily-friend-avatar'>"+escapeHTML(friend.initials||friend.username.slice(0,2).toUpperCase())+"<i class='"+(friend.online?"on":"")+"'></i></span><span><strong>@"+escapeHTML(friend.username)+"</strong><small>"+(friend.online?"Online now":"Offline")+"</small></span></button>").join("");
+  el("socialContent").innerHTML=
+    "<section class='daily-hero'><div><span class='eyebrow'>AJ DAILY</span><h3>"+dailyGreeting()+", "+escapeHTML(state.me?.username||"friend")+" 👋</h3><p>Your quick place to see friends, check in and keep the streak alive.</p></div><div class='daily-streak'><span>🔥</span><strong>"+Number(store.streak||0)+"</strong><small>day streak</small></div></section>"+
+    "<section class='daily-grid'>"+
+      "<article class='daily-card daily-pulse'><span class='eyebrow'>TODAY'S PULSE</span><h4>How are you feeling?</h4><div class='daily-choice-row'>"+choices.map(item=>"<button type='button' class='"+(choice===item?"selected":"")+"' data-daily-choice='"+escapeHTML(item)+"'>"+item+"</button>").join("")+"</div><small class='daily-note'>Your choice stays on this device for now.</small></article>"+
+      "<article class='daily-card'><span class='eyebrow'>DAILY CHALLENGE</span><h4>"+escapeHTML(dailyChallenge())+"</h4><button class='primary-social' id='dailyChatChallenge' type='button'>Open a chat</button></article>"+
+      "<article class='daily-card'><span class='eyebrow'>FRIENDS NOW</span><h4><span class='daily-online-number'>"+online.length+"</span> online</h4><div class='daily-friend-row'>"+(friendCards||"<small class='daily-note'>Add friends to see them here.</small>")+"</div></article>"+
+      "<article class='daily-card'><span class='eyebrow'>QUICK ACTIONS</span><div class='daily-actions'><button type='button' data-daily-action='global'>🌍 Global Chat</button><button type='button' data-daily-action='profile'>👤 My Profile</button><button type='button' data-daily-action='stories'>📸 Stories</button></div></article>"+
+    "</section>"+
+    "<section class='daily-checkin'><div><span class='eyebrow'>DAILY CHECK-IN</span><strong>"+(store.lastCheckin===today?"Checked in today ✓":"Check in for today")+"</strong><small>Open AJChat every day and build your streak.</small></div><button class='primary-social' id='dailyCheckinButton' type='button' "+(store.lastCheckin===today?"disabled":"")+">"+(store.lastCheckin===today?"Done":"Check in")+"</button></section>";
+  el("socialContent").onclick=async event=>{
+    const friend=event.target.closest("[data-daily-friend]");
+    if(friend){await selectFriend(friend.dataset.dailyFriend);closeSocial();return}
+    const c=event.target.closest("[data-daily-choice]");
+    if(c){const data=dailyRead();data.todayChoice=c.dataset.dailyChoice;dailyWrite(data);renderDailySocial();showToast("Today's pulse saved.");return}
+    const action=event.target.closest("[data-daily-action]")?.dataset.dailyAction;
+    if(action==="global")loadSocial("global");
+    if(action==="profile")loadSocial("profile");
+    if(action==="stories")loadSocial("stories");
+    if(event.target.id==="dailyChatChallenge"){
+      if(state.friends.length) {await selectFriend(state.friends[0].username);closeSocial();}
+      else showToast("Add a friend first.");
+    }
+    if(event.target.id==="dailyCheckinButton"){
+      const data=dailyRead(),now=new Date(),last=data.lastCheckin||"";
+      const yesterday=new Date(now);yesterday.setDate(now.getDate()-1);
+      const yKey=yesterday.toISOString().slice(0,10);
+      data.streak=last===yKey?Number(data.streak||0)+1:1;
+      data.lastCheckin=dailyTodayKey();dailyWrite(data);renderDailySocial();showToast("Daily check-in complete 🔥");
+    }
+  };
+}
+
 async function loadSocial(tab=state.socialTab){
   if(state.socialTab==="global"&&tab!=="global")closeGlobalSocket();
   state.socialTab=tab;
   el("chatPanel").classList.add("hidden");el("socialPanel").classList.remove("hidden");
   document.querySelectorAll(".social-tab").forEach(b=>b.classList.toggle("active",b.dataset.socialTab===tab));
-  const title={home:"Home feed",global:"Global Chat",explore:"Explore",stories:"Stories",saved:"Saved",profile:"Your profile",notifications:"Notifications"}[tab]||"AJChat Social";
-  el("socialTitle").textContent=title;el("socialSubtitle").textContent=tab==="home"?"See what your people are sharing.":tab==="global"?"One public room for the whole AJChat community.":"Discover the AJChat community.";
+  const title={home:"Home feed",daily:"AJ Daily",global:"Global Chat",explore:"Explore",stories:"Stories",saved:"Saved",profile:"Your profile",notifications:"Notifications"}[tab]||"AJChat Social";
+  el("socialTitle").textContent=title;el("socialSubtitle").textContent=tab==="daily"?"Your everyday friend dashboard.":tab==="home"?"See what your people are sharing.":tab==="global"?"One public room for the whole AJChat community.":"Discover the AJChat community.";
   el("socialContent").innerHTML="<div class='social-loading'>Loading…</div>";
   try{
-    if(tab==="home")await renderHomeSocial();
+    if(tab==="daily")renderDailySocial();
+    else if(tab==="home")await renderHomeSocial();
     else if(tab==="global")await renderGlobalSocial();
     else if(tab==="explore")await renderExploreSocial();
     else if(tab==="stories")await renderStoriesSocial();
@@ -1454,6 +1520,7 @@ messagesBox?.addEventListener("scroll",updateScrollControl,{passive:true});
 ensureScrollControl();
 document.querySelectorAll(".social-tab").forEach(button=>button.addEventListener("click",()=>loadSocial(button.dataset.socialTab)));
 el("globalChatButton")?.addEventListener("click",()=>loadSocial("global"));
+el("dailyButton")?.addEventListener("click",()=>loadSocial("daily"));
 el("enableNotificationsButton")?.addEventListener("click",ensureNotifications);
 el("socialProfileButton")?.addEventListener("click",()=>openProfile(state.me?.username,true));
 el("socialCloseButton")?.addEventListener("click",closeSocial);

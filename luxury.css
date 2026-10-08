@@ -367,3 +367,87 @@ body.light-mode .auth-submit {
 .daily-checkin div{display:grid;gap:3px}.daily-checkin small{opacity:.55}
 .daily-checkin button:disabled{opacity:.6;cursor:default}
 @media(max-width:760px){.daily-grid{grid-template-columns:1fr}.daily-hero{padding:18px}.daily-checkin{align-items:flex-start}.daily-checkin button{flex-shrink:0}}
+
+/* =========================================================
+   AJCHAT TRANSPARENT GLASS RESET
+   Clean new surface — old visual layer is intentionally overridden.
+   ========================================================= */
+:root{
+  --glass-bg:rgba(255,255,255,.045);
+  --glass-bg-strong:rgba(255,255,255,.075);
+  --glass-border:rgba(255,255,255,.13);
+  --glass-highlight:rgba(255,255,255,.22);
+}
+body{
+  background:
+    radial-gradient(circle at 12% 10%,rgba(212,179,106,.10),transparent 34%),
+    radial-gradient(circle at 88% 82%,rgba(94,184,154,.08),transparent 32%),
+    linear-gradient(135deg,#020304 0%,#07100e 48%,#030405 100%) !important;
+}
+.messenger{
+  background:rgba(8,12,13,.34) !important;
+  border:1px solid var(--glass-border) !important;
+  backdrop-filter:blur(34px) saturate(155%) !important;
+  -webkit-backdrop-filter:blur(34px) saturate(155%) !important;
+  box-shadow:0 30px 100px rgba(0,0,0,.42),inset 0 1px 0 var(--glass-highlight) !important;
+}
+.sidebar,.chat-panel,.social-panel{
+  background:rgba(8,12,13,.22) !important;
+  backdrop-filter:blur(26px) saturate(145%) !important;
+  -webkit-backdrop-filter:blur(26px) saturate(145%) !important;
+}
+.sidebar-top,.chat-header,.social-header{
+  background:rgba(255,255,255,.025) !important;
+  backdrop-filter:blur(20px) !important;
+  border-color:var(--glass-border) !important;
+}
+.search-box,.composer,.global-entry,.daily-entry,.chat-item,.filter-pill,
+.daily-card,.daily-hero,.daily-checkin,.post-card,.create-post-card,.social-section,
+.global-chat-shell,.explore-search,.follow-by-username{
+  background:rgba(255,255,255,.035) !important;
+  border-color:var(--glass-border) !important;
+  backdrop-filter:blur(18px) saturate(140%) !important;
+  -webkit-backdrop-filter:blur(18px) saturate(140%) !important;
+}
+.message{
+  background:rgba(255,255,255,.055) !important;
+  border-color:rgba(255,255,255,.11) !important;
+  backdrop-filter:blur(12px) !important;
+}
+.message-row.me .message{
+  background:rgba(94,184,154,.12) !important;
+  border-color:rgba(94,184,154,.22) !important;
+}
+.composer{
+  background:rgba(5,8,9,.30) !important;
+}
+.social-nav{
+  display:flex;gap:7px;overflow-x:auto;padding:10px 0 4px;scrollbar-width:none;
+}
+.social-nav::-webkit-scrollbar{display:none}
+.social-nav-btn{
+  flex:0 0 auto;border:1px solid var(--glass-border);background:rgba(255,255,255,.035);
+  color:var(--lux-muted);padding:9px 13px;border-radius:999px;cursor:pointer;
+  transition:.2s ease;backdrop-filter:blur(14px);
+}
+.social-nav-btn:hover,.social-nav-btn.active{
+  color:var(--lux-text);border-color:rgba(212,179,106,.42);
+  background:rgba(212,179,106,.12);transform:translateY(-1px);
+}
+.global-nav-btn.active{box-shadow:0 0 24px rgba(94,184,154,.12)}
+.global-only-label{margin:4px 0 10px;padding:9px 12px;border-radius:12px;background:rgba(94,184,154,.07);border:1px solid rgba(94,184,154,.14);font-size:11px;opacity:.8}
+.global-only-label.hidden{display:none}
+.social-panel{overflow:auto}
+.social-content{background:transparent !important}
+body.light-mode .messenger,
+body.light-mode .sidebar,
+body.light-mode .chat-panel,
+body.light-mode .social-panel{
+  background:rgba(255,255,255,.30) !important;
+}
+body.light-mode .message{background:rgba(255,255,255,.42) !important}
+body.light-mode .composer{background:rgba(255,255,255,.25) !important}
+@media(max-width:760px){
+  .messenger{background:rgba(8,12,13,.24) !important}
+  .sidebar,.chat-panel,.social-panel{background:rgba(8,12,13,.18) !important}
+}

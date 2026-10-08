@@ -1,4 +1,5 @@
-/* AJChat styles — split for size; loads full UI + Pro Luxury layer */
-@import url("styles-part1.css");
-@import url("styles-part2.css");
+/* AJChat — Pro Luxury
+   Base styles from last good commit + luxury overrides
+*/
+@import url("https://cdn.jsdelivr.net/gh/AJ-8A/AJChat@81a050c89d0bfd94c81ed797f9816970b0cfc099/styles.css");
 @import url("luxury.css");
